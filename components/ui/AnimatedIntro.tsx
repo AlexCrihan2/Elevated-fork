@@ -1,444 +1,276 @@
-import React, { useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Dimensions,
-  StatusBar,
-} from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSequence,
-  withDelay,
-  withSpring,
-  runOnJS,
-  Easing,
-  interpolate,
-  withRepeat,
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Dimensions, StatusBar, Animated } from 'react-native';
+import Reanimated, {
+  useSharedValue, useAnimatedStyle, withTiming, withSequence,
+  withDelay, withSpring, runOnJS, Easing, interpolate, withRepeat,
 } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
+
+const NUM_STARS = 80;
+const STAR_DATA = Array.from({ length: NUM_STARS }, (_, i) => ({
+  id: i,
+  x: Math.random() * width,
+  y: Math.random() * (height * 0.75),
+  size: Math.random() * 3 + 1,
+  opacity: Math.random() * 0.7 + 0.3,
+  delay: Math.random() * 3000,
+  duration: Math.random() * 2000 + 1500,
+}));
+
+interface StarProps {
+  x: number;
+  y: number;
+  size: number;
+  opacity: number;
+  delay: number;
+  duration: number;
+}
+
+function Star({ x, y, size, opacity, delay, duration }: StarProps) {
+  const anim = useSharedValue(opacity);
+  useEffect(() => {
+    anim.value = withDelay(delay, withRepeat(
+      withSequence(
+        withTiming(opacity * 0.2, { duration, easing: Easing.inOut(Easing.sin) }),
+        withTiming(opacity, { duration, easing: Easing.inOut(Easing.sin) }),
+      ), -1
+    ));
+  }, []);
+  const animStyle = useAnimatedStyle(() => ({ opacity: anim.value }));
+  return (
+    <Reanimated.View
+      style={[styles.star, animStyle, { left: x, top: y, width: size, height: size, borderRadius: size / 2 }]}
+    />
+  );
+}
+
+// Shooting star
+function ShootingStar({ delay }: { delay: number }) {
+  const x = useSharedValue(-60);
+  const y = useSharedValue(Math.random() * (height * 0.4));
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    const animate = () => {
+      const startY = Math.random() * (height * 0.4);
+      y.value = startY;
+      x.value = -60;
+      opacity.value = withDelay(delay, withSequence(
+        withTiming(1, { duration: 200 }),
+        withTiming(0, { duration: 800 }),
+      ));
+      x.value = withDelay(delay, withTiming(width + 100, { duration: 1000, easing: Easing.out(Easing.quad) }));
+    };
+    animate();
+    const interval = setInterval(animate, 4000 + delay);
+    return () => clearInterval(interval);
+  }, []);
+
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value, transform: [{ translateX: x.value }, { translateY: y.value }, { rotate: '30deg' }] }));
+  return <Reanimated.View style={[styles.shootingStar, style]} />;
+}
+
+// Moon crescent
+function Moon() {
+  const glow = useSharedValue(0.8);
+  useEffect(() => {
+    glow.value = withRepeat(
+      withSequence(withTiming(1, { duration: 2000 }), withTiming(0.8, { duration: 2000 })),
+      -1
+    );
+  }, []);
+  const moonStyle = useAnimatedStyle(() => ({ opacity: glow.value }));
+  return (
+    <Reanimated.View style={[styles.moonContainer, moonStyle]}>
+      <View style={styles.moon} />
+      <View style={styles.moonCrescent} />
+    </Reanimated.View>
+  );
+}
 
 interface AnimatedIntroProps {
   onComplete: () => void;
 }
 
 export default function AnimatedIntro({ onComplete }: AnimatedIntroProps) {
-  // Animation values
   const logoScale = useSharedValue(0);
   const logoOpacity = useSharedValue(0);
-  const logoRotation = useSharedValue(0);
-  
   const titleOpacity = useSharedValue(0);
-  const titleTranslateY = useSharedValue(50);
-  
+  const titleY = useSharedValue(40);
   const subtitleOpacity = useSharedValue(0);
-  const subtitleTranslateY = useSharedValue(30);
-  
-  const particleOpacity = useSharedValue(0);
-  const particleScale = useSharedValue(0.5);
-  
   const backgroundOpacity = useSharedValue(1);
   const containerScale = useSharedValue(1);
-  
   const progressWidth = useSharedValue(0);
   const progressOpacity = useSharedValue(0);
-  
-  const orb1Position = useSharedValue(0);
-  const orb2Position = useSharedValue(0);
-  const orb3Position = useSharedValue(0);
+  const skyOpacity = useSharedValue(0);
 
   useEffect(() => {
-    // Start the animation sequence
-    startIntroAnimation();
-  }, []);
-
-  const startIntroAnimation = () => {
-    // Phase 1: Logo entrance with spring
-    logoScale.value = withDelay(300, withSpring(1, {
-      damping: 12,
-      stiffness: 100,
-    }));
+    // Sky fade in
+    skyOpacity.value = withTiming(1, { duration: 1000 });
     
-    logoOpacity.value = withDelay(300, withTiming(1, { duration: 800 }));
-    
-    logoRotation.value = withDelay(500, withSequence(
-      withTiming(360, { duration: 1000, easing: Easing.out(Easing.cubic) }),
-      withRepeat(withTiming(360, { duration: 3000, easing: Easing.linear }), -1)
-    ));
+    // Logo entrance
+    logoScale.value = withDelay(600, withSpring(1, { damping: 12, stiffness: 100 }));
+    logoOpacity.value = withDelay(600, withTiming(1, { duration: 600 }));
 
-    // Phase 2: Floating orbs
-    orb1Position.value = withDelay(800, withRepeat(
-      withSequence(
-        withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-        withTiming(0, { duration: 2000, easing: Easing.inOut(Easing.sin) })
-      ), -1
-    ));
-    
-    orb2Position.value = withDelay(1200, withRepeat(
-      withSequence(
-        withTiming(1, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
-        withTiming(0, { duration: 2500, easing: Easing.inOut(Easing.sin) })
-      ), -1
-    ));
-    
-    orb3Position.value = withDelay(1600, withRepeat(
-      withSequence(
-        withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
-        withTiming(0, { duration: 1800, easing: Easing.inOut(Easing.sin) })
-      ), -1
-    ));
+    // Title
+    titleOpacity.value = withDelay(1100, withTiming(1, { duration: 600 }));
+    titleY.value = withDelay(1100, withSpring(0, { damping: 10, stiffness: 80 }));
+    subtitleOpacity.value = withDelay(1500, withTiming(1, { duration: 600 }));
 
-    // Phase 3: Title and subtitle
-    titleOpacity.value = withDelay(1000, withTiming(1, { duration: 600 }));
-    titleTranslateY.value = withDelay(1000, withSpring(0, {
-      damping: 10,
-      stiffness: 100,
-    }));
-    
-    subtitleOpacity.value = withDelay(1400, withTiming(1, { duration: 600 }));
-    subtitleTranslateY.value = withDelay(1400, withSpring(0, {
-      damping: 10,
-      stiffness: 100,
-    }));
+    // Progress bar
+    progressOpacity.value = withDelay(2000, withTiming(1, { duration: 400 }));
+    progressWidth.value = withDelay(2200, withTiming(1, { duration: 1600, easing: Easing.out(Easing.cubic) }));
 
-    // Phase 4: Particles
-    particleOpacity.value = withDelay(1800, withTiming(1, { duration: 500 }));
-    particleScale.value = withDelay(1800, withSpring(1, {
-      damping: 8,
-      stiffness: 120,
-    }));
-
-    // Phase 5: Progress bar
-    progressOpacity.value = withDelay(2200, withTiming(1, { duration: 400 }));
-    progressWidth.value = withDelay(2400, withTiming(1, { 
-      duration: 1500,
-      easing: Easing.out(Easing.cubic)
-    }));
-
-    // Phase 6: Exit animation
+    // Exit
     setTimeout(() => {
-      // Zoom out effect
-      containerScale.value = withTiming(0.9, { 
-        duration: 500,
-        easing: Easing.in(Easing.cubic)
-      });
-      
-      backgroundOpacity.value = withTiming(0, { 
-        duration: 500,
-        easing: Easing.in(Easing.cubic)
-      }, () => {
+      containerScale.value = withTiming(1.05, { duration: 400, easing: Easing.in(Easing.quad) });
+      backgroundOpacity.value = withTiming(0, { duration: 500, easing: Easing.in(Easing.quad) }, () => {
         runOnJS(onComplete)();
       });
-    }, 4000);
-  };
+    }, 4200);
+  }, []);
 
-  // Logo animation styles
-  const logoAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: logoScale.value },
-      { rotate: `${logoRotation.value}deg` }
-    ],
+  const logoStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: logoScale.value }],
     opacity: logoOpacity.value,
   }));
-
-  // Title animation styles
-  const titleAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: titleOpacity.value,
-    transform: [{ translateY: titleTranslateY.value }],
-  }));
-
-  // Subtitle animation styles
-  const subtitleAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: subtitleOpacity.value,
-    transform: [{ translateY: subtitleTranslateY.value }],
-  }));
-
-  // Particles animation styles
-  const particleAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: particleOpacity.value,
-    transform: [{ scale: particleScale.value }],
-  }));
-
-  // Background animation styles
-  const backgroundAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: backgroundOpacity.value,
-    transform: [{ scale: containerScale.value }],
-  }));
-
-  // Progress animation styles
-  const progressAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: progressOpacity.value,
-  }));
-
-  const progressBarAnimatedStyle = useAnimatedStyle(() => ({
-    width: `${progressWidth.value * 100}%`,
-  }));
-
-  // Floating orbs animation styles
-  const orb1AnimatedStyle = useAnimatedStyle(() => {
-    const translateY = interpolate(orb1Position.value, [0, 1], [0, -30]);
-    const translateX = interpolate(orb1Position.value, [0, 1], [0, 20]);
-    return {
-      transform: [
-        { translateY },
-        { translateX }
-      ],
-      opacity: interpolate(orb1Position.value, [0, 0.5, 1], [0.3, 1, 0.3]),
-    };
-  });
-
-  const orb2AnimatedStyle = useAnimatedStyle(() => {
-    const translateY = interpolate(orb2Position.value, [0, 1], [0, 40]);
-    const translateX = interpolate(orb2Position.value, [0, 1], [0, -25]);
-    return {
-      transform: [
-        { translateY },
-        { translateX }
-      ],
-      opacity: interpolate(orb2Position.value, [0, 0.5, 1], [0.2, 0.8, 0.2]),
-    };
-  });
-
-  const orb3AnimatedStyle = useAnimatedStyle(() => {
-    const translateY = interpolate(orb3Position.value, [0, 1], [0, -20]);
-    const translateX = interpolate(orb3Position.value, [0, 1], [0, 15]);
-    return {
-      transform: [
-        { translateY },
-        { translateX }
-      ],
-      opacity: interpolate(orb3Position.value, [0, 0.5, 1], [0.4, 0.9, 0.4]),
-    };
-  });
+  const titleStyle = useAnimatedStyle(() => ({ opacity: titleOpacity.value, transform: [{ translateY: titleY.value }] }));
+  const subtitleStyle = useAnimatedStyle(() => ({ opacity: subtitleOpacity.value }));
+  const bgStyle = useAnimatedStyle(() => ({ opacity: backgroundOpacity.value, transform: [{ scale: containerScale.value }] }));
+  const progressContainerStyle = useAnimatedStyle(() => ({ opacity: progressOpacity.value }));
+  const progressBarStyle = useAnimatedStyle(() => ({ width: `${progressWidth.value * 100}%` }));
+  const skyStyle = useAnimatedStyle(() => ({ opacity: skyOpacity.value }));
 
   return (
-    <Animated.View style={[styles.container, backgroundAnimatedStyle]}>
-      <StatusBar barStyle="dark-content" backgroundColor="white" />
+    <Reanimated.View style={[styles.container, bgStyle]}>
+      <StatusBar barStyle="light-content" backgroundColor="#050B1F" />
       
-      {/* Background gradient effect with View */}
-      <View style={styles.backgroundGradient} />
+      {/* Night Sky Background */}
+      <Reanimated.View style={[styles.skyBg, skyStyle]}>
+        {/* Stars */}
+        {STAR_DATA.map(s => (
+          <Star key={s.id} x={s.x} y={s.y} size={s.size} opacity={s.opacity} delay={s.delay} duration={s.duration} />
+        ))}
+        
+        {/* Shooting stars */}
+        <ShootingStar delay={1500} />
+        <ShootingStar delay={3200} />
+        
+        {/* Moon */}
+        <Moon />
 
-      {/* Floating orbs */}
-      <Animated.View style={[styles.orb1, orb1AnimatedStyle]}>
-        <View style={[styles.orbGradient, { backgroundColor: '#3B82F6' }]} />
-      </Animated.View>
-      
-      <Animated.View style={[styles.orb2, orb2AnimatedStyle]}>
-        <View style={[styles.orbGradient, { backgroundColor: '#8B5CF6' }]} />
-      </Animated.View>
-      
-      <Animated.View style={[styles.orb3, orb3AnimatedStyle]}>
-        <View style={[styles.orbGradient, { backgroundColor: '#10B981' }]} />
-      </Animated.View>
+        {/* Nebula effects */}
+        <View style={styles.nebula1} />
+        <View style={styles.nebula2} />
+        <View style={styles.nebula3} />
+
+        {/* Horizon glow */}
+        <View style={styles.horizon} />
+      </Reanimated.View>
+
+      {/* City silhouette */}
+      <View style={styles.cityContainer}>
+        <View style={styles.building1} />
+        <View style={styles.building2} />
+        <View style={styles.building3} />
+        <View style={styles.building4} />
+        <View style={styles.building5} />
+        <View style={styles.building6} />
+        <View style={styles.building7} />
+      </View>
 
       {/* Main content */}
       <View style={styles.content}>
         {/* Logo */}
-        <Animated.View style={[styles.logoContainer, logoAnimatedStyle]}>
-          <View style={styles.logoBackground}>
-            <View style={styles.logoGradient}>
-              <MaterialIcons name="auto-awesome" size={60} color="white" />
+        <Reanimated.View style={[styles.logoContainer, logoStyle]}>
+          <View style={styles.logoOuter}>
+            <View style={styles.logoInner}>
+              <MaterialIcons name="auto-awesome" size={56} color="#F9E784" />
             </View>
           </View>
-        </Animated.View>
+          {/* Logo glow rings */}
+          <View style={styles.glowRing1} />
+          <View style={styles.glowRing2} />
+        </Reanimated.View>
 
         {/* Title */}
-        <Animated.View style={titleAnimatedStyle}>
+        <Reanimated.View style={titleStyle}>
           <Text style={styles.title}>Elevated</Text>
-        </Animated.View>
+        </Reanimated.View>
 
         {/* Subtitle */}
-        <Animated.View style={subtitleAnimatedStyle}>
-          <Text style={styles.subtitle}>
-            Elevated Social Experience
-          </Text>
-        </Animated.View>
-
-        {/* Animated particles */}
-        <Animated.View style={[styles.particlesContainer, particleAnimatedStyle]}>
-          {[...Array(12)].map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.particle,
-                {
-                  left: `${10 + (index * 7)}%`,
-                  top: `${30 + (index % 3) * 15}%`,
-                },
-                {
-                  backgroundColor: index % 3 === 0 ? '#3B82F6' : 
-                                 index % 3 === 1 ? '#8B5CF6' : 
-                                 '#10B981'
-                }
-              ]}
-            />
-          ))}
-        </Animated.View>
+        <Reanimated.View style={subtitleStyle}>
+          <Text style={styles.subtitle}>Your Universe. Elevated.</Text>
+          <View style={styles.tagRow}>
+            {['✦ Connect', '✦ Create', '✦ Inspire'].map((tag, i) => (
+              <View key={i} style={styles.tag}>
+                <Text style={styles.tagText}>{tag}</Text>
+              </View>
+            ))}
+          </View>
+        </Reanimated.View>
       </View>
 
       {/* Progress bar */}
-      <Animated.View style={[styles.progressContainer, progressAnimatedStyle]}>
+      <Reanimated.View style={[styles.progressContainer, progressContainerStyle]}>
         <View style={styles.progressTrack}>
-          <Animated.View style={[styles.progressBar, progressBarAnimatedStyle]}>
-            <View style={styles.progressGradient} />
-          </Animated.View>
+          <Reanimated.View style={[styles.progressBar, progressBarStyle]} />
         </View>
-        <Text style={styles.progressText}>Initializing...</Text>
-      </Animated.View>
-
-      {/* Bottom decoration */}
-      <View style={styles.bottomDecoration}>
-        <View style={styles.decorationDot} />
-        <View style={[styles.decorationDot, styles.decorationDotActive]} />
-        <View style={styles.decorationDot} />
-      </View>
-    </Animated.View>
+        <Text style={styles.progressText}>Initializing your universe...</Text>
+      </Reanimated.View>
+    </Reanimated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  backgroundGradient: {
+  container: { flex: 1, backgroundColor: '#050B1F' },
+  skyBg: { ...StyleSheet.absoluteFillObject },
+  star: { position: 'absolute', backgroundColor: '#FFFFFF' },
+  shootingStar: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#F8FAFC',
-  },
-  content: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-  },
-  logoContainer: {
-    marginBottom: 40,
-  },
-  logoBackground: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  logoGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#3B82F6',
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 12,
-    textAlign: 'center',
-    letterSpacing: -1,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 24,
-    fontWeight: '400',
-  },
-  particlesContainer: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    top: 0,
-    left: 0,
-  },
-  particle: {
-    position: 'absolute',
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-  },
-  progressContainer: {
-    position: 'absolute',
-    bottom: 100,
-    left: 40,
-    right: 40,
-    alignItems: 'center',
-  },
-  progressTrack: {
-    width: '100%',
-    height: 3,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 1.5,
-    marginBottom: 12,
-  },
-  progressBar: {
-    height: '100%',
-    borderRadius: 1.5,
-  },
-  progressGradient: {
-    flex: 1,
-    borderRadius: 1.5,
-    backgroundColor: '#3B82F6',
-  },
-  progressText: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    fontWeight: '500',
-  },
-  bottomDecoration: {
-    position: 'absolute',
-    bottom: 40,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  decorationDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#D1D5DB',
-  },
-  decorationDotActive: {
-    backgroundColor: '#3B82F6',
-  },
-  orb1: {
-    position: 'absolute',
-    top: '20%',
-    left: '15%',
-    width: 80,
-    height: 80,
-  },
-  orb2: {
-    position: 'absolute',
-    top: '60%',
-    right: '10%',
     width: 60,
-    height: 60,
+    height: 2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 1,
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
   },
-  orb3: {
-    position: 'absolute',
-    top: '80%',
-    left: '25%',
-    width: 40,
-    height: 40,
-  },
-  orbGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 50,
-    opacity: 0.1,
-  },
+  moonContainer: { position: 'absolute', top: 60, right: 40 },
+  moon: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#F9E784', shadowColor: '#F9E784', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 20, elevation: 8 },
+  moonCrescent: { position: 'absolute', top: 5, left: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: '#0A1535' },
+  nebula1: { position: 'absolute', top: '15%', left: '5%', width: 200, height: 100, borderRadius: 100, backgroundColor: 'rgba(99,102,241,0.08)', transform: [{ scaleX: 2 }] },
+  nebula2: { position: 'absolute', top: '40%', right: '5%', width: 150, height: 80, borderRadius: 80, backgroundColor: 'rgba(236,72,153,0.06)', transform: [{ scaleX: 1.5 }] },
+  nebula3: { position: 'absolute', top: '60%', left: '20%', width: 180, height: 90, borderRadius: 90, backgroundColor: 'rgba(59,130,246,0.07)', transform: [{ scaleX: 1.8 }] },
+  horizon: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 120, backgroundColor: 'rgba(15,30,80,0.8)' },
+  
+  cityContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around', paddingHorizontal: 10 },
+  building1: { width: 40, height: 90, backgroundColor: '#0A1535', borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+  building2: { width: 55, height: 140, backgroundColor: '#0D1D4A', borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+  building3: { width: 35, height: 110, backgroundColor: '#091228', borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+  building4: { width: 65, height: 180, backgroundColor: '#0F2266', borderTopLeftRadius: 6, borderTopRightRadius: 6 },
+  building5: { width: 45, height: 120, backgroundColor: '#0A1535', borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+  building6: { width: 50, height: 160, backgroundColor: '#0D1D4A', borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+  building7: { width: 35, height: 95, backgroundColor: '#091228', borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+
+  content: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, paddingTop: 40 },
+  logoContainer: { position: 'relative', marginBottom: 32, alignItems: 'center', justifyContent: 'center' },
+  logoOuter: { width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(249,231,132,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(249,231,132,0.3)' },
+  logoInner: { width: 96, height: 96, borderRadius: 48, backgroundColor: 'rgba(249,231,132,0.2)', alignItems: 'center', justifyContent: 'center' },
+  glowRing1: { position: 'absolute', width: 140, height: 140, borderRadius: 70, borderWidth: 1, borderColor: 'rgba(249,231,132,0.2)' },
+  glowRing2: { position: 'absolute', width: 170, height: 170, borderRadius: 85, borderWidth: 0.5, borderColor: 'rgba(249,231,132,0.1)' },
+
+  title: { fontSize: 42, fontWeight: '800', color: '#F9E784', textAlign: 'center', letterSpacing: 2, textShadowColor: 'rgba(249,231,132,0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 20, marginBottom: 12 },
+  subtitle: { fontSize: 16, color: 'rgba(255,255,255,0.75)', textAlign: 'center', fontWeight: '500', letterSpacing: 0.5, marginBottom: 20 },
+  tagRow: { flexDirection: 'row', justifyContent: 'center', gap: 12 },
+  tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(249,231,132,0.3)', backgroundColor: 'rgba(249,231,132,0.05)' },
+  tagText: { fontSize: 11, color: 'rgba(249,231,132,0.8)', fontWeight: '600', letterSpacing: 0.5 },
+
+  progressContainer: { position: 'absolute', bottom: 80, left: 40, right: 40, alignItems: 'center' },
+  progressTrack: { width: '100%', height: 2, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 1, marginBottom: 10, overflow: 'hidden' },
+  progressBar: { height: '100%', borderRadius: 1, backgroundColor: '#F9E784', shadowColor: '#F9E784', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 6 },
+  progressText: { fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: '500', letterSpacing: 1 },
 });

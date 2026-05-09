@@ -33,6 +33,8 @@ import { useLocalization } from '@/contexts/LocalizationContext';
 import { useConnections } from '@/contexts/ConnectionContext';
 import { getAutoTranslateSetting } from '@/services/userPreferences';
 import LanguageSelector, { LanguageSelectorButton } from '@/components/ui/LanguageSelector';
+import DonationPanel from '@/components/economy/DonationPanel';
+import { useEconomy } from '@/contexts/EconomyContext';
 
 const { width } = Dimensions.get('window');
 
@@ -82,6 +84,7 @@ export default function HomeScreen() {
   const { theme, isDark } = useTheme();
   const { t, currentLanguage } = useLocalization();
   const { platformStats } = useConnections();
+  const { getDonationsForTarget } = useEconomy();
   
   // State for user preferences
   const [autoTranslate, setAutoTranslate] = useState(true);
@@ -124,6 +127,8 @@ export default function HomeScreen() {
   const [showSpiderAnalytics, setShowSpiderAnalytics] = useState(false);
   const [showAIDebugDashboard, setShowAIDebugDashboard] = useState(false);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
+  const [donationPostId, setDonationPostId] = useState<string | null>(null);
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   
   // AI Livestreams data
   const aiLivestreams = [
@@ -234,12 +239,19 @@ export default function HomeScreen() {
     }
   ];
 
-  const filters = ['All', 'Friends', 'Following', 'Popular', 'Recent'];
+  const filters = ['All', 'Friends', 'Following', 'Popular', 'Recent', 'AI Picks'];
 
-  // Filter posts by selected category
+  // Filter posts by selected category AND active filter
   const getFilteredPosts = () => {
-    if (selectedCategory === 'all') return posts;
-    return posts.filter(post => post.category === selectedCategory);
+    let filtered = selectedCategory === 'all' ? posts : posts.filter(p => p.category === selectedCategory);
+    switch (activeFilter) {
+      case 'Friends': return filtered.filter(p => ['drsarah_mitchell'].includes(p.user.username));
+      case 'Following': return filtered.filter(p => p.user.verified);
+      case 'Popular': return [...filtered].sort((a, b) => (b.engagement.likes + b.engagement.comments) - (a.engagement.likes + a.engagement.comments));
+      case 'Recent': return [...filtered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      case 'AI Picks': return filtered.filter(p => p.analytics && p.analytics.aiScore >= 85);
+      default: return filtered;
+    }
   };
 
   // Get AI score color based on performance
@@ -395,10 +407,14 @@ Shared from Social App`;
       <View style={styles.actionButtons}>
         <TouchableOpacity 
           style={styles.actionButton}
-          onPress={() => Alert.alert('Like', 'Post liked!')}
+          onPress={() => {
+            const newLiked = new Set(likedPosts);
+            if (newLiked.has(item.id)) newLiked.delete(item.id); else newLiked.add(item.id);
+            setLikedPosts(newLiked);
+          }}
         >
-          <MaterialIcons name="thumb-up" size={20} color="#65676B" />
-          <Text style={styles.actionText}>Like</Text>
+          <MaterialIcons name={likedPosts.has(item.id) ? 'thumb-up' : 'thumb-up-off-alt'} size={20} color={likedPosts.has(item.id) ? '#1877F2' : '#65676B'} />
+          <Text style={[styles.actionText, likedPosts.has(item.id) && { color: '#1877F2' }]}>Like</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -423,6 +439,13 @@ Shared from Social App`;
         >
           <MaterialIcons name="bookmark-border" size={20} color="#65676B" />
           <Text style={styles.actionText}>Save</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.actionButton, { backgroundColor: '#FFF0F0', borderRadius: 8 }]}
+          onPress={() => setDonationPostId(item.id)}
+        >
+          <MaterialIcons name="favorite" size={20} color="#EF4444" />
+          <Text style={[styles.actionText, { color: '#EF4444' }]}>Tip</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -775,6 +798,18 @@ Shared from Social App`;
         visible={showAIAssistant}
         onClose={() => setShowAIAssistant(false)}
       />
+
+      {/* Donation Panel for posts */}
+      {donationPostId && (
+        <DonationPanel
+          visible={!!donationPostId}
+          onClose={() => setDonationPostId(null)}
+          targetId={donationPostId}
+          targetType="post"
+          targetName={posts.find(p => p.id === donationPostId)?.user.name || 'Creator'}
+          onSuccess={(amount, emoji) => Alert.alert('Tip Sent!', `You sent ${amount} credits ${emoji} to the creator!`)}
+        />
+      )}
     </SafeAreaView>
   );
 }

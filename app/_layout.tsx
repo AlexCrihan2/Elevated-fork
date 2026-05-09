@@ -10,6 +10,7 @@ import { ConnectionProvider } from '@/contexts/ConnectionContext';
 import { AIDebugProvider } from '@/contexts/AIDebugContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AnimatedIntro from '@/components/ui/AnimatedIntro';
+import { EconomyProvider } from '@/contexts/EconomyContext';
 
 export default function RootLayout() {
   const [showIntro, setShowIntro] = useState(true);
@@ -31,6 +32,7 @@ export default function RootLayout() {
               <SocialProvider>
                 <ConnectionProvider>
                   <AIDebugProvider>
+                    <EconomyProvider>
                 <StatusBar style="dark" backgroundColor="white" />
                 <Stack screenOptions={{ headerShown: false }}>
                   <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -46,6 +48,7 @@ export default function RootLayout() {
                     presentation: 'modal'
                   }} />
                 </Stack>
+                    </EconomyProvider>
                   </AIDebugProvider>
                 </ConnectionProvider>
               </SocialProvider>
