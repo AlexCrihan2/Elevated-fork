@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSequence,
   withSpring, withDelay, runOnJS, Easing, interpolate, FadeIn, FadeOut,
+  withRepeat,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEconomy, DONATION_EMOJIS } from '@/contexts/EconomyContext';
@@ -27,6 +28,15 @@ interface LiveStreamViewerProps {
   visible: boolean;
   onClose: () => void;
   streamData?: LiveStreamData;
+}
+
+interface DonationToast {
+  id: string;
+  donorName: string;
+  emoji: string;
+  emojiLabel: string;
+  amount: number;
+  color: string;
 }
 
 interface FloatingEmoji {
@@ -62,6 +72,18 @@ const { width, height } = Dimensions.get('window');
 
 const QUICK_DONATE_AMOUNTS = [5, 10, 20, 50, 100];
 
+const TOAST_DURATION = 3500;
+
+const EMOJI_COLORS: Record<string, string> = {
+  heart: '#EF4444',
+  fire: '#F97316',
+  star: '#F59E0B',
+  diamond: '#06B6D4',
+  rocket: '#8B5CF6',
+  crown: '#FFD700',
+  trophy: '#10B981',
+};
+
 const MOCK_DONORS: StreamDonor[] = [
   { id: 'd1', name: 'CryptoWhale', avatar: '🐋', totalAmount: 2500, lastEmoji: '👑', donationCount: 12 },
   { id: 'd2', name: 'TechFan99', avatar: '👨‍💻', totalAmount: 1200, lastEmoji: '🔥', donationCount: 8 },
@@ -87,7 +109,82 @@ const supportedLanguages = [
   { code: 'zh', name: 'Chinese', flag: '🇨🇳', confidence: 0.86 },
 ];
 
-// Floating emoji animation component
+// ─── Donation Toast Banner ───────────────────────────────────────────────────
+function DonationToastBanner({ toast, onDone }: { toast: DonationToast; onDone: (id: string) => void }) {
+  const slideY = useSharedValue(-90);
+  const opacity = useSharedValue(0);
+  const progress = useSharedValue(1);
+  const scale = useSharedValue(0.9);
+
+  useEffect(() => {
+    // Slide in + pop
+    slideY.value = withSpring(0, { damping: 14, stiffness: 200 });
+    opacity.value = withTiming(1, { duration: 250 });
+    scale.value = withSequence(
+      withSpring(1.04, { damping: 10, stiffness: 220 }),
+      withSpring(1, { damping: 12, stiffness: 200 })
+    );
+    // Countdown progress bar drains to 0
+    progress.value = withTiming(0, { duration: TOAST_DURATION, easing: Easing.linear });
+    // Slide out after duration
+    slideY.value = withDelay(
+      TOAST_DURATION - 350,
+      withTiming(-90, { duration: 350, easing: Easing.in(Easing.quad) })
+    );
+    opacity.value = withDelay(
+      TOAST_DURATION - 350,
+      withTiming(0, { duration: 350 }, () => {
+        runOnJS(onDone)(toast.id);
+      })
+    );
+  }, []);
+
+  const containerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: slideY.value }, { scale: scale.value }],
+    opacity: opacity.value,
+  }));
+
+  const progressStyle = useAnimatedStyle(() => ({
+    width: `${progress.value * 100}%`,
+  }));
+
+  return (
+    <Animated.View style={[styles.toastWrapper, containerStyle]}>
+      <View style={[styles.toastContainer, { borderColor: toast.color + '60' }]}>
+        {/* Left accent bar */}
+        <View style={[styles.toastAccent, { backgroundColor: toast.color }]} />
+
+        {/* Emoji badge */}
+        <View style={[styles.toastEmojiBadge, { backgroundColor: toast.color + '22', borderColor: toast.color + '55' }]}>
+          <Text style={styles.toastEmojiText}>{toast.emoji}</Text>
+        </View>
+
+        {/* Info */}
+        <View style={styles.toastInfo}>
+          <View style={styles.toastTopRow}>
+            <Text style={styles.toastDonorName} numberOfLines={1}>{toast.donorName}</Text>
+            <View style={[styles.toastTypeChip, { backgroundColor: toast.color + '20' }]}>
+              <Text style={[styles.toastTypeText, { color: toast.color }]}>{toast.emojiLabel}</Text>
+            </View>
+          </View>
+          <View style={styles.toastBottomRow}>
+            <MaterialIcons name="favorite" size={11} color={toast.color} />
+            <Text style={[styles.toastAmountText, { color: toast.color }]}>
+              {toast.amount.toLocaleString()} credits donated!
+            </Text>
+          </View>
+        </View>
+
+        {/* Countdown progress bar at bottom */}
+        <View style={styles.toastProgressTrack}>
+          <Animated.View style={[styles.toastProgressFill, { backgroundColor: toast.color }, progressStyle]} />
+        </View>
+      </View>
+    </Animated.View>
+  );
+}
+
+// ─── Floating Emoji Bubble ───────────────────────────────────────────────────
 function FloatingEmojiBubble({ item, onDone }: { item: FloatingEmoji; onDone: (id: string) => void }) {
   const y = useSharedValue(0);
   const opacity = useSharedValue(1);
@@ -102,10 +199,7 @@ function FloatingEmojiBubble({ item, onDone }: { item: FloatingEmoji; onDone: (i
   }, []);
 
   const style = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: y.value },
-      { scale: scale.value },
-    ],
+    transform: [{ translateY: y.value }, { scale: scale.value }],
     opacity: opacity.value,
   }));
 
@@ -122,7 +216,7 @@ function FloatingEmojiBubble({ item, onDone }: { item: FloatingEmoji; onDone: (i
   );
 }
 
-// Donor rank badge
+// ─── Donor Rank Badge ────────────────────────────────────────────────────────
 function RankBadge({ rank }: { rank: number }) {
   const colors: [string, string][] = [['#FFD700', '#FFA500'], ['#C0C0C0', '#A8A8A8'], ['#CD7F32', '#8B4513']];
   const icons = ['👑', '🥈', '🥉'];
@@ -134,6 +228,7 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
+// ─── Main Component ──────────────────────────────────────────────────────────
 export default function LiveStreamViewer({ visible, onClose, streamData }: LiveStreamViewerProps) {
   const insets = useSafeAreaInsets();
   const { credits, donate: donateFn } = useEconomy();
@@ -143,16 +238,15 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
   const [captionsEnabled, setCaptionsEnabled] = useState(true);
   const [currentLanguage, setCurrentLanguage] = useState(supportedLanguages[0]);
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
-  const [liveSubtitle, setLiveSubtitle] = useState('Welcome to today\'s live stream!');
+  const [liveSubtitle, setLiveSubtitle] = useState("Welcome to today's live stream!");
 
   // UI panels
   const [activePanel, setActivePanel] = useState<'chat' | 'leaderboard' | 'donate'>('chat');
-  const [showDonateQuick, setShowDonateQuick] = useState(false);
   const [selectedEmojiKey, setSelectedEmojiKey] = useState('heart');
   const [customAmount, setCustomAmount] = useState('');
   const [selectedAmount, setSelectedAmount] = useState(10);
 
-  // Chat state
+  // Chat
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(MOCK_CHAT);
   const [chatInput, setChatInput] = useState('');
   const chatScrollRef = useRef<ScrollView>(null);
@@ -163,10 +257,46 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
   // Floating emojis
   const [floatingEmojis, setFloatingEmojis] = useState<FloatingEmoji[]>([]);
 
-  // Total donated to this stream
+  // ── Toast queue management ──
+  const [activeDonationToast, setActiveDonationToast] = useState<DonationToast | null>(null);
+  const toastQueueRef = useRef<DonationToast[]>([]);
+  const toastBusyRef = useRef(false);
+
+  const processNextToast = useCallback(() => {
+    if (toastQueueRef.current.length === 0) {
+      toastBusyRef.current = false;
+      setActiveDonationToast(null);
+      return;
+    }
+    toastBusyRef.current = true;
+    const next = toastQueueRef.current.shift()!;
+    setActiveDonationToast(next);
+  }, []);
+
+  const dismissToast = useCallback((id: string) => {
+    setActiveDonationToast(null);
+    // Small gap before next toast appears
+    setTimeout(processNextToast, 300);
+  }, [processNextToast]);
+
+  const buildAndEnqueueToast = useCallback((donorName: string, amount: number, emojiKey: string) => {
+    const emojiData = DONATION_EMOJIS[emojiKey] || DONATION_EMOJIS.heart;
+    const toast: DonationToast = {
+      id: `toast_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      donorName,
+      emoji: emojiData.emoji,
+      emojiLabel: emojiData.label,
+      amount,
+      color: EMOJI_COLORS[emojiKey] || '#667eea',
+    };
+    toastQueueRef.current.push(toast);
+    if (!toastBusyRef.current) processNextToast();
+  }, [processNextToast]);
+
+  // Total donated
   const totalDonated = donors.reduce((s, d) => s + d.totalAmount, 0);
 
-  // Stream subtitle loop
+  // Subtitle loop
   const subtitles = [
     "Welcome everyone to today's live stream on advanced AI applications!",
     "Let's dive into the technical implementation details of this breakthrough.",
@@ -184,7 +314,7 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
     return () => clearInterval(interval);
   }, [visible]);
 
-  // Viewer count fluctuation
+  // Viewer fluctuation
   useEffect(() => {
     if (!visible) return;
     const interval = setInterval(() => {
@@ -194,7 +324,7 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
     return () => clearInterval(interval);
   }, [visible]);
 
-  // Simulate incoming donations
+  // Simulated donations every 8 seconds
   useEffect(() => {
     if (!visible) return;
     const interval = setInterval(() => {
@@ -205,10 +335,9 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
       const randomEmojiKey = emojiKeys[Math.floor(Math.random() * emojiKeys.length)];
       const emojiData = DONATION_EMOJIS[randomEmojiKey];
 
-      // Spawn floating emoji
-      spawnFloatingEmoji(randomDonor, randomAmount, emojiData.emoji, '#667eea');
+      spawnFloatingEmoji(randomDonor, randomAmount, emojiData.emoji, EMOJI_COLORS[randomEmojiKey] || '#667eea');
+      buildAndEnqueueToast(randomDonor, randomAmount, randomEmojiKey);
 
-      // Add to chat
       const newMsg: ChatMessage = {
         id: `auto_${Date.now()}`,
         user: randomDonor,
@@ -222,19 +351,14 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
       setChatMessages(prev => [...prev.slice(-20), newMsg]);
     }, 8000);
     return () => clearInterval(interval);
-  }, [visible]);
+  }, [visible, buildAndEnqueueToast]);
 
   const spawnFloatingEmoji = useCallback((donorName: string, amount: number, emoji: string, color: string) => {
     const xPos = Math.random() * (width - 120) + 20;
-    const newEmoji: FloatingEmoji = {
+    setFloatingEmojis(prev => [...prev, {
       id: `fe_${Date.now()}_${Math.random()}`,
-      emoji,
-      color,
-      x: xPos,
-      donorName,
-      amount,
-    };
-    setFloatingEmojis(prev => [...prev, newEmoji]);
+      emoji, color, x: xPos, donorName, amount,
+    }]);
   }, []);
 
   const removeFloatingEmoji = useCallback((id: string) => {
@@ -244,25 +368,17 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
   const handleDonate = () => {
     const finalAmount = customAmount ? parseInt(customAmount) || 0 : selectedAmount;
     const emojiData = DONATION_EMOJIS[selectedEmojiKey];
-
-    if (finalAmount < emojiData.minAmount) {
-      return;
-    }
-    if (credits < finalAmount) {
-      return;
-    }
+    if (finalAmount < emojiData.minAmount || credits < finalAmount) return;
 
     const success = donateFn(streamData?.id || 'stream_1', 'stream', finalAmount, selectedEmojiKey);
     if (success) {
-      // Spawn multiple floating emojis for impact
       for (let i = 0; i < 3; i++) {
-        setTimeout(() => {
-          spawnFloatingEmoji('You', finalAmount, emojiData.emoji, '#667eea');
-        }, i * 200);
+        setTimeout(() => spawnFloatingEmoji('You', finalAmount, emojiData.emoji, EMOJI_COLORS[selectedEmojiKey] || '#667eea'), i * 200);
       }
+      // Show toast immediately for user's own donation
+      buildAndEnqueueToast('You', finalAmount, selectedEmojiKey);
 
-      // Add donation chat message
-      const newMsg: ChatMessage = {
+      setChatMessages(prev => [...prev.slice(-20), {
         id: `don_${Date.now()}`,
         user: 'You',
         message: `Just donated ${finalAmount} credits ${emojiData.emoji}!`,
@@ -271,10 +387,8 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
         isDonation: true,
         donationEmoji: emojiData.emoji,
         donationAmount: finalAmount,
-      };
-      setChatMessages(prev => [...prev.slice(-20), newMsg]);
+      }]);
 
-      // Update leaderboard — add "You" or increment
       setDonors(prev => {
         const existing = prev.find(d => d.name === 'You');
         if (existing) {
@@ -284,16 +398,11 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
           )].sort((a, b) => b.totalAmount - a.totalAmount);
         }
         return [{
-          id: `you_${Date.now()}`,
-          name: 'You',
-          avatar: '😊',
-          totalAmount: finalAmount,
-          lastEmoji: emojiData.emoji,
-          donationCount: 1,
+          id: `you_${Date.now()}`, name: 'You', avatar: '😊',
+          totalAmount: finalAmount, lastEmoji: emojiData.emoji, donationCount: 1,
         }, ...prev].sort((a, b) => b.totalAmount - a.totalAmount);
       });
 
-      setShowDonateQuick(false);
       setCustomAmount('');
       setActivePanel('leaderboard');
       setTimeout(() => setActivePanel('chat'), 3000);
@@ -302,24 +411,15 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
 
   const handleSendChat = () => {
     if (!chatInput.trim()) return;
-    const newMsg: ChatMessage = {
-      id: `msg_${Date.now()}`,
-      user: 'You',
-      message: chatInput.trim(),
-      time: 'now',
-      verified: false,
-    };
-    setChatMessages(prev => [...prev.slice(-20), newMsg]);
+    setChatMessages(prev => [...prev.slice(-20), {
+      id: `msg_${Date.now()}`, user: 'You', message: chatInput.trim(), time: 'now', verified: false,
+    }]);
     setChatInput('');
     setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100);
   };
 
   const renderChatMessage = ({ item }: { item: ChatMessage }) => (
-    <View style={[
-      styles.chatMsg,
-      item.isDonation && styles.chatMsgDonation,
-      item.user === 'You' && styles.chatMsgOwn,
-    ]}>
+    <View style={[styles.chatMsg, item.isDonation && styles.chatMsgDonation, item.user === 'You' && styles.chatMsgOwn]}>
       {item.isDonation && (
         <LinearGradient colors={['#667eea22', '#764ba222']} style={styles.donationMsgBanner}>
           <Text style={styles.donationMsgEmoji}>{item.donationEmoji}</Text>
@@ -336,19 +436,15 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
 
   const renderLeaderboard = () => (
     <View style={styles.leaderboardContainer}>
-      {/* Total raised banner */}
       <LinearGradient colors={['#667eea', '#764ba2']} style={styles.totalRaisedBanner}>
         <MaterialIcons name="favorite" size={16} color="#FFF" />
         <Text style={styles.totalRaisedText}>{totalDonated.toLocaleString()} credits raised</Text>
         <Text style={styles.totalRaisedUSD}>≈ ${(totalDonated / 100).toFixed(0)} USD</Text>
       </LinearGradient>
-
       {donors.map((donor, index) => (
         <View key={donor.id} style={[styles.leaderboardRow, index === 0 && styles.leaderboardRowFirst]}>
           <RankBadge rank={index + 1} />
-          <View style={styles.leaderboardAvatar}>
-            <Text style={styles.leaderboardAvatarText}>{donor.avatar}</Text>
-          </View>
+          <View style={styles.leaderboardAvatar}><Text style={styles.leaderboardAvatarText}>{donor.avatar}</Text></View>
           <View style={styles.leaderboardInfo}>
             <Text style={styles.leaderboardName}>{donor.name}</Text>
             <Text style={styles.leaderboardDonations}>{donor.donationCount} donation{donor.donationCount !== 1 ? 's' : ''}</Text>
@@ -367,60 +463,36 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
     const emojiData = DONATION_EMOJIS[selectedEmojiKey];
     const finalAmount = customAmount ? parseInt(customAmount) || 0 : selectedAmount;
     const canAfford = credits >= finalAmount;
-
     return (
       <View style={styles.donatePanel}>
         <Text style={styles.donatePanelTitle}>Choose Donation Type</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.emojiTypeRow}>
           {Object.entries(DONATION_EMOJIS).map(([key, val]) => (
-            <TouchableOpacity
-              key={key}
-              style={[styles.emojiTypeBtn, selectedEmojiKey === key && styles.emojiTypeBtnSelected]}
-              onPress={() => { setSelectedEmojiKey(key); if (selectedAmount < val.minAmount) setSelectedAmount(val.minAmount); }}
-            >
+            <TouchableOpacity key={key} style={[styles.emojiTypeBtn, selectedEmojiKey === key && styles.emojiTypeBtnSelected]}
+              onPress={() => { setSelectedEmojiKey(key); if (selectedAmount < val.minAmount) setSelectedAmount(val.minAmount); }}>
               <Text style={styles.emojiTypeBtnEmoji}>{val.emoji}</Text>
               <Text style={styles.emojiTypeBtnLabel}>{val.label}</Text>
               <Text style={styles.emojiTypeBtnMin}>{val.minAmount}cr+</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
-
         <Text style={styles.donatePanelTitle}>Amount</Text>
         <View style={styles.quickAmountsRow}>
           {QUICK_DONATE_AMOUNTS.map(amt => (
-            <TouchableOpacity
-              key={amt}
-              style={[styles.quickAmtBtn, selectedAmount === amt && !customAmount && styles.quickAmtBtnActive]}
-              onPress={() => { setSelectedAmount(amt); setCustomAmount(''); }}
-            >
+            <TouchableOpacity key={amt} style={[styles.quickAmtBtn, selectedAmount === amt && !customAmount && styles.quickAmtBtnActive]}
+              onPress={() => { setSelectedAmount(amt); setCustomAmount(''); }}>
               <Text style={[styles.quickAmtText, selectedAmount === amt && !customAmount && styles.quickAmtTextActive]}>{amt}</Text>
             </TouchableOpacity>
           ))}
         </View>
-
-        <TextInput
-          style={styles.customAmtInput}
-          placeholder="Custom amount..."
-          placeholderTextColor="#6B7280"
-          keyboardType="numeric"
-          value={customAmount}
-          onChangeText={setCustomAmount}
-        />
-
+        <TextInput style={styles.customAmtInput} placeholder="Custom amount..." placeholderTextColor="#6B7280"
+          keyboardType="numeric" value={customAmount} onChangeText={setCustomAmount} />
         <View style={styles.donateSummaryRow}>
           <Text style={styles.donateSummaryLabel}>{emojiData.emoji} Sending {finalAmount} credits</Text>
           <Text style={styles.donateSummaryBalance}>Balance: {credits.toLocaleString()} cr</Text>
         </View>
-
-        <TouchableOpacity
-          style={[styles.donateConfirmBtn, !canAfford && styles.donateConfirmBtnDisabled]}
-          onPress={handleDonate}
-          disabled={!canAfford}
-        >
-          <LinearGradient
-            colors={canAfford ? ['#667eea', '#764ba2'] : ['#6B7280', '#4B5563']}
-            style={styles.donateConfirmGradient}
-          >
+        <TouchableOpacity style={[styles.donateConfirmBtn, !canAfford && styles.donateConfirmBtnDisabled]} onPress={handleDonate} disabled={!canAfford}>
+          <LinearGradient colors={canAfford ? ['#667eea', '#764ba2'] : ['#6B7280', '#4B5563']} style={styles.donateConfirmGradient}>
             <Text style={styles.donateConfirmText}>{emojiData.emoji} Donate {finalAmount} Credits</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -429,7 +501,6 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
   };
 
   if (!streamData) return null;
-
   const streamColor = streamData.color || '#667eea';
 
   return (
@@ -439,13 +510,7 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
 
         {/* ── Video Area ── */}
         <View style={styles.videoArea}>
-          {/* Simulated stream background */}
-          <LinearGradient
-            colors={[streamColor + 'CC', '#0F172A']}
-            style={StyleSheet.absoluteFill}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          />
+          <LinearGradient colors={[streamColor + 'CC', '#0F172A']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
 
           {/* Presentation card */}
           <View style={styles.presentationCard}>
@@ -461,6 +526,15 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
               ))}
             </View>
           </View>
+
+          {/* ── Donation Toast (slides from top of video area) ── */}
+          {activeDonationToast ? (
+            <DonationToastBanner
+              key={activeDonationToast.id}
+              toast={activeDonationToast}
+              onDone={dismissToast}
+            />
+          ) : null}
 
           {/* Floating emojis */}
           {floatingEmojis.map(item => (
@@ -499,28 +573,18 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
 
           {/* Video controls */}
           <View style={styles.videoControls}>
-            <TouchableOpacity
-              style={[styles.vcBtn, captionsEnabled && styles.vcBtnActive]}
-              onPress={() => setCaptionsEnabled(!captionsEnabled)}
-            >
+            <TouchableOpacity style={[styles.vcBtn, captionsEnabled && styles.vcBtnActive]} onPress={() => setCaptionsEnabled(!captionsEnabled)}>
               <MaterialIcons name={captionsEnabled ? 'closed-caption' : 'closed-caption-off'} size={18} color="#FFF" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.vcBtn} onPress={() => setShowLanguageSelector(true)}>
               <Text style={styles.vcBtnFlag}>{currentLanguage.flag}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.vcBtn}>
-              <MaterialIcons name="volume-up" size={18} color="#FFF" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.vcBtn}>
-              <MaterialIcons name="fullscreen" size={18} color="#FFF" />
-            </TouchableOpacity>
+            <TouchableOpacity style={styles.vcBtn}><MaterialIcons name="volume-up" size={18} color="#FFF" /></TouchableOpacity>
+            <TouchableOpacity style={styles.vcBtn}><MaterialIcons name="fullscreen" size={18} color="#FFF" /></TouchableOpacity>
           </View>
 
           {/* Total donations overlay */}
-          <TouchableOpacity
-            style={styles.totalDonationOverlay}
-            onPress={() => setActivePanel('leaderboard')}
-          >
+          <TouchableOpacity style={styles.totalDonationOverlay} onPress={() => setActivePanel('leaderboard')}>
             <MaterialIcons name="favorite" size={14} color="#EF4444" />
             <Text style={styles.totalDonationText}>{totalDonated.toLocaleString()} cr</Text>
           </TouchableOpacity>
@@ -528,69 +592,36 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
 
         {/* ── Bottom Panel ── */}
         <View style={[styles.bottomPanel, { paddingBottom: insets.bottom + 8 }]}>
-
-          {/* Panel tabs */}
           <View style={styles.panelTabs}>
             {(['chat', 'leaderboard', 'donate'] as const).map(tab => (
-              <TouchableOpacity
-                key={tab}
-                style={[styles.panelTab, activePanel === tab && styles.panelTabActive]}
-                onPress={() => setActivePanel(tab)}
-              >
-                <MaterialIcons
-                  name={tab === 'chat' ? 'chat-bubble-outline' : tab === 'leaderboard' ? 'leaderboard' : 'favorite'}
-                  size={16}
-                  color={activePanel === tab ? '#667eea' : '#9CA3AF'}
-                />
+              <TouchableOpacity key={tab} style={[styles.panelTab, activePanel === tab && styles.panelTabActive]} onPress={() => setActivePanel(tab)}>
+                <MaterialIcons name={tab === 'chat' ? 'chat-bubble-outline' : tab === 'leaderboard' ? 'leaderboard' : 'favorite'} size={16} color={activePanel === tab ? '#667eea' : '#9CA3AF'} />
                 <Text style={[styles.panelTabText, activePanel === tab && styles.panelTabTextActive]}>
                   {tab === 'chat' ? 'Chat' : tab === 'leaderboard' ? 'Top Donors' : 'Donate'}
                 </Text>
                 {tab === 'leaderboard' && (
-                  <View style={styles.donorCountBadge}>
-                    <Text style={styles.donorCountBadgeText}>{donors.length}</Text>
-                  </View>
+                  <View style={styles.donorCountBadge}><Text style={styles.donorCountBadgeText}>{donors.length}</Text></View>
                 )}
               </TouchableOpacity>
             ))}
           </View>
 
-          {/* Panel content */}
           {activePanel === 'chat' && (
-            <KeyboardAvoidingView
-              style={styles.chatPanel}
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            >
-              <ScrollView
-                ref={chatScrollRef}
-                style={styles.chatScroll}
-                showsVerticalScrollIndicator={false}
+            <KeyboardAvoidingView style={styles.chatPanel} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+              <ScrollView ref={chatScrollRef} style={styles.chatScroll} showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.chatScrollContent}
-                onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: true })}
-              >
+                onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: true })}>
                 {chatMessages.map(msg => renderChatMessage({ item: msg }))}
               </ScrollView>
-
-              {/* Quick donate button in chat */}
-              <TouchableOpacity
-                style={styles.quickDonateFloating}
-                onPress={() => setActivePanel('donate')}
-              >
+              <TouchableOpacity style={styles.quickDonateFloating} onPress={() => setActivePanel('donate')}>
                 <LinearGradient colors={['#EF4444', '#DC2626']} style={styles.quickDonateGradient}>
                   <MaterialIcons name="favorite" size={16} color="#FFF" />
                   <Text style={styles.quickDonateText}>Tip</Text>
                 </LinearGradient>
               </TouchableOpacity>
-
               <View style={styles.chatInputRow}>
-                <TextInput
-                  style={styles.chatInput}
-                  placeholder="Say something..."
-                  placeholderTextColor="#6B7280"
-                  value={chatInput}
-                  onChangeText={setChatInput}
-                  onSubmitEditing={handleSendChat}
-                  returnKeyType="send"
-                />
+                <TextInput style={styles.chatInput} placeholder="Say something..." placeholderTextColor="#6B7280"
+                  value={chatInput} onChangeText={setChatInput} onSubmitEditing={handleSendChat} returnKeyType="send" />
                 <TouchableOpacity style={styles.chatSendBtn} onPress={handleSendChat}>
                   <MaterialIcons name="send" size={18} color="#FFF" />
                 </TouchableOpacity>
@@ -617,11 +648,8 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
             <View style={styles.langModal}>
               <Text style={styles.langModalTitle}>Choose Language</Text>
               {supportedLanguages.map(lang => (
-                <TouchableOpacity
-                  key={lang.code}
-                  style={[styles.langOption, currentLanguage.code === lang.code && styles.langOptionActive]}
-                  onPress={() => { setCurrentLanguage(lang); setShowLanguageSelector(false); }}
-                >
+                <TouchableOpacity key={lang.code} style={[styles.langOption, currentLanguage.code === lang.code && styles.langOptionActive]}
+                  onPress={() => { setCurrentLanguage(lang); setShowLanguageSelector(false); }}>
                   <Text style={styles.langFlag}>{lang.flag}</Text>
                   <Text style={styles.langName}>{lang.name}</Text>
                   <Text style={styles.langConfidence}>{(lang.confidence * 100).toFixed(0)}%</Text>
@@ -671,23 +699,74 @@ const styles = StyleSheet.create({
   presentationMetricValue: { fontSize: 16, fontWeight: '800', color: '#059669' },
   presentationMetricLabel: { fontSize: 10, color: '#6B7280' },
 
-  // Floating emojis
-  floatingBubble: {
-    position: 'absolute', bottom: 100, zIndex: 50,
+  // ── Donation Toast ────────────────────────────────────────────────
+  toastWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 10,
+    right: 10,
+    zIndex: 200,
   },
+  toastContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(10,16,30,0.96)',
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 14,
+    elevation: 14,
+  },
+  toastAccent: {
+    width: 4,
+    height: '100%',
+    borderRadius: 2,
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+  },
+  toastEmojiBadge: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    marginLeft: 6,
+  },
+  toastEmojiText: { fontSize: 22 },
+  toastInfo: { flex: 1 },
+  toastTopRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
+  toastDonorName: { color: '#F1F5F9', fontSize: 14, fontWeight: '800', flex: 1 },
+  toastTypeChip: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
+  toastTypeText: { fontSize: 10, fontWeight: '700' },
+  toastBottomRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  toastAmountText: { fontSize: 12, fontWeight: '700' },
+  toastProgressTrack: {
+    position: 'absolute', bottom: 0, left: 0, right: 0, height: 3,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  toastProgressFill: { height: '100%', borderRadius: 2 },
+
+  // Floating emojis
+  floatingBubble: { position: 'absolute', bottom: 100, zIndex: 50 },
   floatingBubbleInner: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(15,23,42,0.85)', paddingHorizontal: 10, paddingVertical: 6,
-    borderRadius: 20, borderWidth: 1.5,
+    backgroundColor: 'rgba(15,23,42,0.85)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5,
   },
   floatingEmoji: { fontSize: 20 },
   floatingInfo: {},
   floatingName: { color: '#F1F5F9', fontSize: 10, fontWeight: '700', maxWidth: 70 },
   floatingAmount: { fontSize: 9, fontWeight: '700' },
 
-  subtitleOverlay: {
-    position: 'absolute', bottom: 80, left: 12, right: 12, zIndex: 10,
-  },
+  subtitleOverlay: { position: 'absolute', bottom: 80, left: 12, right: 12, zIndex: 10 },
   subtitlePill: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,
     backgroundColor: 'rgba(0,0,0,0.82)', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10,
@@ -696,13 +775,8 @@ const styles = StyleSheet.create({
   subtitleFlag: { fontSize: 14 },
   subtitleText: { color: '#FFF', fontSize: 13, lineHeight: 18, flex: 1 },
 
-  videoControls: {
-    position: 'absolute', bottom: 16, right: 12, zIndex: 10, gap: 6,
-  },
-  vcBtn: {
-    width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(0,0,0,0.65)',
-    alignItems: 'center', justifyContent: 'center',
-  },
+  videoControls: { position: 'absolute', bottom: 16, right: 12, zIndex: 10, gap: 6 },
+  vcBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(0,0,0,0.65)', alignItems: 'center', justifyContent: 'center' },
   vcBtnActive: { backgroundColor: '#667eea' },
   vcBtnFlag: { fontSize: 16 },
 
@@ -715,7 +789,6 @@ const styles = StyleSheet.create({
 
   // Bottom panel
   bottomPanel: { flex: 1, backgroundColor: '#111827' },
-
   panelTabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#1F2937' },
   panelTab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, gap: 5, borderBottomWidth: 2, borderBottomColor: 'transparent' },
   panelTabActive: { borderBottomColor: '#667eea' },
@@ -751,7 +824,7 @@ const styles = StyleSheet.create({
   totalRaisedText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
   totalRaisedUSD: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
   leaderboardRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1E293B', borderRadius: 12, padding: 10, marginBottom: 8, gap: 10 },
-  leaderboardRowFirst: { borderWidth: 1.5, borderColor: '#FFD700' + '80' },
+  leaderboardRowFirst: { borderWidth: 1.5, borderColor: '#FFD70080' },
   rankBadge: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   rankBadgeText: { fontSize: 14 },
   rankNumber: { fontSize: 13, fontWeight: '700', color: '#9CA3AF', width: 32, textAlign: 'center' },
