@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "OnSpace Platform",
-    "slug": "onspace-platform",
+    "name": "Elevated",
+    "slug": "elevated",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,14 +16,14 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.onspace.platform"
+      "bundleIdentifier": "com.elevated.platform"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.onspace.platform",
+      "package": "com.elevated.platform",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
@@ -46,15 +46,15 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow OnSpace to access your camera to take photos and videos.",
-          "microphonePermission": "Allow OnSpace to access your microphone to record audio."
+          "cameraPermission": "Allow Elevated to access your camera to take photos and videos.",
+          "microphonePermission": "Allow Elevated to access your microphone to record audio."
         }
       ],
       [
         "expo-media-library",
         {
-          "photosPermission": "Allow OnSpace to access your photos to share and save content.",
-          "savePhotosPermission": "Allow OnSpace to save photos to your gallery."
+          "photosPermission": "Allow Elevated to access your photos to share and save content.",
+          "savePhotosPermission": "Allow Elevated to save photos to your gallery."
         }
       ],
       [
@@ -68,13 +68,13 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow OnSpace to use your location for weather and local content."
+          "locationAlwaysAndWhenInUsePermission": "Allow Elevated to use your location for weather and local content."
         }
       ],
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Allow OnSpace to use Face ID for secure authentication."
+          "faceIDPermission": "Allow Elevated to use Face ID for secure authentication."
         }
       ],
       "expo-secure-store",
