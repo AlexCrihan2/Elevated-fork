@@ -132,26 +132,26 @@ export default function HomeScreen() {
   
   // AI Livestreams data
   const aiLivestreams = [
-    { id: 'ls1', title: 'AI & Future Tech Summit', host: 'TechWorld', viewers: 12400, category: 'Technology', emoji: '🤖', color: '#3B82F6', isLive: true },
-    { id: 'ls2', title: 'Mindfulness & Mental Health', host: 'Dr. Chen', viewers: 8900, category: 'Health', emoji: '🧘', color: '#10B981', isLive: true },
-    { id: 'ls3', title: 'Champions League Match', host: 'Sports Live', viewers: 45200, category: 'Sports', emoji: '⚽', color: '#EF4444', isLive: true },
-    { id: 'ls4', title: 'Startup Pitch Night', host: 'VentureHub', viewers: 3400, category: 'Business', emoji: '🚀', color: '#8B5CF6', isLive: true },
-    { id: 'ls5', title: 'Global Climate Conference', host: 'EcoNews', viewers: 19800, category: 'Science', emoji: '🌍', color: '#06B6D4', isLive: true },
-    { id: 'ls6', title: 'Cooking Masterclass', host: 'Chef Marco', viewers: 5600, category: 'Food', emoji: '👨‍🍳', color: '#F97316', isLive: true },
+    { id: 'ls1', title: 'AI & Future Tech Summit', host: 'TechWorld', viewers: 12400, category: 'Technology', emoji: '🤖', color: '#D35400', isLive: true },
+    { id: 'ls2', title: 'Mindfulness & Mental Health', host: 'Dr. Chen', viewers: 8900, category: 'Health', emoji: '🧘', color: '#E67E22', isLive: true },
+    { id: 'ls3', title: 'Champions League Match', host: 'Sports Live', viewers: 45200, category: 'Sports', emoji: '⚽', color: '#E74C3C', isLive: true },
+    { id: 'ls4', title: 'Startup Pitch Night', host: 'VentureHub', viewers: 3400, category: 'Business', emoji: '🚀', color: '#F39C12', isLive: true },
+    { id: 'ls5', title: 'Global Climate Conference', host: 'EcoNews', viewers: 19800, category: 'Science', emoji: '🌍', color: '#BA4A00', isLive: true },
+    { id: 'ls6', title: 'Cooking Masterclass', host: 'Chef Marco', viewers: 5600, category: 'Food', emoji: '👨‍🍳', color: '#F1C40F', isLive: true },
   ];
 
   // Quick Actions with proper onPress handlers
   const categories = [
-    { id: 'all', name: 'All Posts', icon: 'apps', color: '#6366F1' },
-    { id: 'trending', name: 'Trending', icon: 'trending-up', color: '#EF4444' },
-    { id: 'technology', name: 'Technology', icon: 'computer', color: '#3B82F6' },
-    { id: 'health', name: 'Health & Medical', icon: 'local-hospital', color: '#10B981' },
-    { id: 'art', name: 'Art & Design', icon: 'palette', color: '#F59E0B' },
-    { id: 'entertainment', name: 'Entertainment', icon: 'movie', color: '#8B5CF6' },
-    { id: 'sports', name: 'Sports', icon: 'sports-soccer', color: '#06B6D4' },
-    { id: 'food', name: 'Food & Cooking', icon: 'restaurant', color: '#F97316' },
-    { id: 'travel', name: 'Travel', icon: 'flight', color: '#84CC16' },
-    { id: 'education', name: 'Education', icon: 'school', color: '#A855F7' },
+    { id: 'all', name: 'All Posts', icon: 'apps', color: '#D35400' },
+    { id: 'trending', name: 'Trending', icon: 'trending-up', color: '#E74C3C' },
+    { id: 'technology', name: 'Technology', icon: 'computer', color: '#E67E22' },
+    { id: 'health', name: 'Health & Medical', icon: 'local-hospital', color: '#BA4A00' },
+    { id: 'art', name: 'Art & Design', icon: 'palette', color: '#F39C12' },
+    { id: 'entertainment', name: 'Entertainment', icon: 'movie', color: '#CA6F1E' },
+    { id: 'sports', name: 'Sports', icon: 'sports-soccer', color: '#D35400' },
+    { id: 'food', name: 'Food & Cooking', icon: 'restaurant', color: '#F1C40F' },
+    { id: 'travel', name: 'Travel', icon: 'flight', color: '#8D6E63' },
+    { id: 'education', name: 'Education', icon: 'school', color: '#A1887F' },
   ];
 
   // Enhanced Posts data with more diverse users and AI analytics
@@ -346,26 +346,26 @@ Shared from Social App`;
   // Render functions
 
   const renderPost = ({ item }: { item: Post }) => (
-    <View style={styles.postCard}>
+    <View style={[styles.postCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
       {/* Post Header */}
       <View style={styles.postHeader}>
         <View style={styles.userInfo}>
-          <View style={styles.userAvatar}>
+          <View style={[styles.userAvatar, { backgroundColor: theme.colors.inputBackground }]}>
             <Text style={styles.userAvatarText}>{item.user.avatar}</Text>
           </View>
           
           <View style={styles.userDetails}>
             <View style={styles.userNameRow}>
               <TouchableOpacity onPress={() => handleUserPress(item.user)}>
-                <Text style={[styles.userName, styles.clickableUserName]}>{item.user.name}</Text>
+                <Text style={[styles.userName, styles.clickableUserName, { color: theme.colors.primary }]}>{item.user.name}</Text>
               </TouchableOpacity>
               {item.user.verified && (
-                <MaterialIcons name="verified" size={16} color="#1DA1F2" />
+                <MaterialIcons name="verified" size={16} color={theme.colors.primary} />
               )}
             </View>
-            <Text style={styles.postTimestamp}>{item.timestamp}</Text>
+            <Text style={[styles.postTimestamp, { color: theme.colors.textSecondary }]}>{item.timestamp}</Text>
             {item.user.profession && (
-              <Text style={styles.userProfession}>{item.user.profession} · {formatEngagementNumber(item.user.followers || 0)} followers</Text>
+              <Text style={[styles.userProfession, { color: theme.colors.textSecondary }]}>{item.user.profession} · {formatEngagementNumber(item.user.followers || 0)} followers</Text>
             )}
           </View>
         </View>
@@ -374,16 +374,16 @@ Shared from Social App`;
           style={styles.postMenuButton}
           onPress={() => Alert.alert('Post Options', 'Post menu opened')}
         >
-          <MaterialIcons name="more-horiz" size={24} color="#65676B" />
+          <MaterialIcons name="more-horiz" size={24} color={theme.colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
       {/* Post Content */}
       <View style={styles.postContent}>
-        <Text style={styles.postText}>{item.content}</Text>
+        <Text style={[styles.postText, { color: theme.colors.text }]}>{item.content}</Text>
         
         {/* Translation Widget */}
-        <View style={styles.translationContainer}>
+        <View style={[styles.translationContainer, { borderTopColor: theme.colors.border }]}>
           <TranslationWidget 
             text={item.content}
             category={item.category || 'general'}
@@ -396,9 +396,9 @@ Shared from Social App`;
 
         {/* Photo placeholder for non-poll posts */}
         {item.contentType && item.contentType.type === 'photo' && (
-          <View style={styles.photoPlaceholder}>
-            <MaterialIcons name="photo" size={60} color="#65676B" />
-            <Text style={styles.photoText}>Photo Content</Text>
+          <View style={[styles.photoPlaceholder, { backgroundColor: theme.colors.inputBackground }]}>
+            <MaterialIcons name="photo" size={60} color={theme.colors.textSecondary} />
+            <Text style={[styles.photoText, { color: theme.colors.textSecondary }]}>Photo Content</Text>
           </View>
         )}
       </View>
@@ -413,39 +413,39 @@ Shared from Social App`;
             setLikedPosts(newLiked);
           }}
         >
-          <MaterialIcons name={likedPosts.has(item.id) ? 'thumb-up' : 'thumb-up-off-alt'} size={20} color={likedPosts.has(item.id) ? '#1877F2' : '#65676B'} />
-          <Text style={[styles.actionText, likedPosts.has(item.id) && { color: '#1877F2' }]}>Like</Text>
+          <MaterialIcons name={likedPosts.has(item.id) ? 'thumb-up' : 'thumb-up-off-alt'} size={20} color={likedPosts.has(item.id) ? theme.colors.primary : theme.colors.textSecondary} />
+          <Text style={[styles.actionText, { color: theme.colors.textSecondary }, likedPosts.has(item.id) && { color: theme.colors.primary }]}>Like</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
           style={styles.actionButton}
           onPress={() => handleCommentPress(item)}
         >
-          <MaterialIcons name="chat-bubble-outline" size={20} color="#65676B" />
-          <Text style={styles.actionText}>Comment</Text>
+          <MaterialIcons name="chat-bubble-outline" size={20} color={theme.colors.textSecondary} />
+          <Text style={[styles.actionText, { color: theme.colors.textSecondary }]}>Comment</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
           style={styles.actionButton}
           onPress={() => handleSharePress(item)}
         >
-          <MaterialIcons name="share" size={20} color="#65676B" />
-          <Text style={styles.actionText}>Share</Text>
+          <MaterialIcons name="share" size={20} color={theme.colors.textSecondary} />
+          <Text style={[styles.actionText, { color: theme.colors.textSecondary }]}>Share</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
           style={styles.actionButton}
           onPress={() => Alert.alert('Save', 'Post saved!')}
         >
-          <MaterialIcons name="bookmark-border" size={20} color="#65676B" />
-          <Text style={styles.actionText}>Save</Text>
+          <MaterialIcons name="bookmark-border" size={20} color={theme.colors.textSecondary} />
+          <Text style={[styles.actionText, { color: theme.colors.textSecondary }]}>Save</Text>
         </TouchableOpacity>
         <TouchableOpacity 
-          style={[styles.actionButton, { backgroundColor: '#FFF0F0', borderRadius: 8 }]}
+          style={[styles.actionButton, { backgroundColor: theme.colors.error + '20', borderRadius: 8 }]}
           onPress={() => setDonationPostId(item.id)}
         >
-          <MaterialIcons name="favorite" size={20} color="#EF4444" />
-          <Text style={[styles.actionText, { color: '#EF4444' }]}>Tip</Text>
+          <MaterialIcons name="favorite" size={20} color={theme.colors.error} />
+          <Text style={[styles.actionText, { color: theme.colors.error }]}>Tip</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -736,7 +736,7 @@ Shared from Social App`;
 
       {/* Floating Action Button */}
       <TouchableOpacity 
-        style={styles.fab}
+        style={[styles.fab, { backgroundColor: theme.colors.primary, shadowColor: theme.colors.primary }]}
         onPress={() => setShowCreatePostModal(true)}
       >
         <MaterialIcons name="add" size={28} color="white" />
@@ -867,7 +867,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 4,
     right: 4,
-    backgroundColor: '#1877F2',
+    backgroundColor: '#D35400',
     borderRadius: 10,
     minWidth: 18,
     height: 18,

@@ -11,6 +11,7 @@ import { AIDebugProvider } from '@/contexts/AIDebugContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AnimatedIntro from '@/components/ui/AnimatedIntro';
 import { EconomyProvider } from '@/contexts/EconomyContext';
+import ModernBackground from '@/components/ui/ModernBackground';
 
 export default function RootLayout() {
   const [showIntro, setShowIntro] = useState(true);
@@ -34,6 +35,7 @@ export default function RootLayout() {
                   <AIDebugProvider>
                     <EconomyProvider>
                 <StatusBar style="dark" backgroundColor="white" />
+                <ModernBackground />
                 <Stack screenOptions={{ headerShown: false }}>
                   <Stack.Screen name="index" options={{ headerShown: false }} />
                   <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

@@ -4,6 +4,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
+import ModernAnimatedUI from '@/components/ui/ModernAnimatedUI';
 
 const { width } = Dimensions.get('window');
 
@@ -81,7 +82,7 @@ const researchMilestones = [
 export default function BrandingScreen() {
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
-  const [selectedSection, setSelectedSection] = useState('projects');
+  const [selectedSection, setSelectedSection] = useState('modern');
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
 
@@ -92,10 +93,10 @@ export default function BrandingScreen() {
   };
 
   const navSections = [
+    { key: 'modern', label: 'Modern UI', icon: 'auto-awesome' },
     { key: 'projects', label: 'Projects', icon: 'science' },
     { key: 'preorders', label: 'Pre-Orders', icon: 'shopping-cart' },
     { key: 'funding', label: 'Funding', icon: 'monetization-on' },
-    { key: 'milestones', label: 'Timeline', icon: 'timeline' },
   ];
 
   const renderProjects = () => (
@@ -286,6 +287,11 @@ export default function BrandingScreen() {
 
       {/* Content */}
       <View style={styles.content}>
+        {selectedSection === 'modern' && (
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.gridContent}>
+            <ModernAnimatedUI />
+          </ScrollView>
+        )}
         {selectedSection === 'projects' && renderProjects()}
         {selectedSection === 'preorders' && renderPreOrders()}
         {selectedSection === 'funding' && renderFunding()}

@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Image } fr
 import { MaterialIcons } from '@expo/vector-icons';
 import { Post } from '@/types/social';
 import { useSocial } from '@/hooks/useSocial';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface PostCardProps {
   post: Post;
@@ -26,6 +27,7 @@ export default function PostCard({
   isSubscribed,
   onPress
 }: PostCardProps) {
+  const { theme } = useTheme();
   const { updatePost } = useSocial();
   const [isTranslated, setIsTranslated] = useState(false);
   const [originalContent, setOriginalContent] = useState(post.content);
@@ -371,7 +373,7 @@ export default function PostCard({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
       <TouchableOpacity 
         style={styles.postTouchable}
         onPress={handlePostPress}
@@ -379,7 +381,7 @@ export default function PostCard({
       >
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.avatar}>
+        <View style={[styles.avatar, { backgroundColor: theme.colors.primary }]}>
           <Text style={styles.avatarText}>
             {post.user.displayName.charAt(0)}
           </Text>
@@ -387,9 +389,9 @@ export default function PostCard({
         <View style={styles.userInfo}>
           <View style={styles.userDetails}>
             <View style={styles.nameRow}>
-              <Text style={styles.displayName}>{post.user.displayName}</Text>
+              <Text style={[styles.displayName, { color: theme.colors.text }]}>{post.user.displayName}</Text>
               {post.user.verified && (
-                <MaterialIcons name="verified" size={16} color="#3B82F6" style={styles.verifiedIcon} />
+                <MaterialIcons name="verified" size={16} color={theme.colors.primary} style={styles.verifiedIcon} />
               )}
             </View>
             <View style={styles.metaRow}>
@@ -397,8 +399,8 @@ export default function PostCard({
               {post.location && (
                 <>
                   <Text style={styles.dot}>•</Text>
-                  <MaterialIcons name="location-on" size={12} color="#3B82F6" />
-                  <Text style={styles.locationText}>{post.location}</Text>
+                  <MaterialIcons name="location-on" size={12} color={theme.colors.primary} />
+                  <Text style={[styles.locationText, { color: theme.colors.primary }]}>{post.location}</Text>
                 </>
               )}
             </View>
@@ -407,17 +409,19 @@ export default function PostCard({
             <TouchableOpacity 
               style={[
                 styles.subscribeButton,
-                isSubscribed && styles.subscribeButtonActive
+                { borderColor: theme.colors.primary },
+                isSubscribed && { backgroundColor: theme.colors.primary }
               ]}
               onPress={onSubscribe}
             >
               <MaterialIcons 
                 name={isSubscribed ? 'check' : 'add'} 
                 size={16} 
-                color={isSubscribed ? 'white' : '#3B82F6'} 
+                color={isSubscribed ? 'white' : theme.colors.primary}
               />
               <Text style={[
                 styles.subscribeButtonText,
+                { color: theme.colors.primary },
                 isSubscribed && styles.subscribeButtonTextActive
               ]}>
                 {isSubscribed ? 'Subscribed' : 'Subscribe'}
@@ -443,26 +447,26 @@ export default function PostCard({
 
       {/* Content */}
       <View style={styles.contentContainer}>
-        <Text style={styles.content}>{post.content}</Text>
+        <Text style={[styles.content, { color: theme.colors.text }]}>{post.content}</Text>
         
         {/* File Attachments */}
         {post.attachments && post.attachments.length > 0 && (
-          <View style={styles.attachmentsContainer}>
+          <View style={[styles.attachmentsContainer, { backgroundColor: theme.colors.inputBackground }]}>
             <View style={styles.attachmentsHeader}>
-              <MaterialIcons name="attach-file" size={16} color="#3B82F6" />
-              <Text style={styles.attachmentsTitle}>Attached Files ({post.attachments.length})</Text>
+              <MaterialIcons name="attach-file" size={16} color={theme.colors.primary} />
+              <Text style={[styles.attachmentsTitle, { color: theme.colors.text }]}>Attached Files ({post.attachments.length})</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {post.attachments.map((file, index) => (
-                <View key={index} style={styles.attachmentItem}>
+                <View key={index} style={[styles.attachmentItem, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
                   <View style={styles.attachmentIconContainer}>
                     <MaterialIcons 
                       name={getFileIcon(file.name)} 
                       size={20} 
-                      color="#3B82F6" 
+                      color={theme.colors.primary}
                     />
                   </View>
-                  <Text style={styles.attachmentName} numberOfLines={1}>{file.name}</Text>
+                  <Text style={[styles.attachmentName, { color: theme.colors.text }]} numberOfLines={1}>{file.name}</Text>
                   <Text style={styles.attachmentSize}>{formatFileSize(file.size)}</Text>
                 </View>
               ))}
@@ -560,33 +564,33 @@ export default function PostCard({
         {/* Content Actions */}
         <View style={styles.contentActions}>
           <TouchableOpacity 
-            style={styles.contentActionButton}
+            style={[styles.contentActionButton, { backgroundColor: theme.colors.buttonSecondary, borderColor: theme.colors.border }]}
             onPress={handleTranslate}
           >
             <MaterialIcons 
               name={isTranslated ? 'translate' : 'g-translate'} 
               size={16} 
-              color={isTranslated ? '#10B981' : '#3B82F6'} 
+              color={isTranslated ? theme.colors.success : theme.colors.primary}
             />
-            <Text style={[styles.contentActionText, isTranslated && styles.translatedText]}>
+            <Text style={[styles.contentActionText, { color: theme.colors.textSecondary }, isTranslated && { color: theme.colors.success }]}>
               {isTranslated ? 'Show Original' : 'Translate'}
             </Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={styles.contentActionButton}
+            style={[styles.contentActionButton, { backgroundColor: theme.colors.buttonSecondary, borderColor: theme.colors.border }]}
             onPress={addRandomEmoji}
           >
             <Text style={styles.emojiIcon}>😊</Text>
-            <Text style={styles.contentActionText}>Add Emoji</Text>
+            <Text style={[styles.contentActionText, { color: theme.colors.textSecondary }]}>Add Emoji</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={styles.contentActionButton}
+            style={[styles.contentActionButton, { backgroundColor: theme.colors.buttonSecondary, borderColor: theme.colors.border }]}
             onPress={() => setShowEmojiBar(!showEmojiBar)}
           >
-            <MaterialIcons name="sentiment-satisfied-alt" size={16} color="#F59E0B" />
-            <Text style={styles.contentActionText}>React</Text>
+            <MaterialIcons name="sentiment-satisfied-alt" size={16} color={theme.colors.warning} />
+            <Text style={[styles.contentActionText, { color: theme.colors.textSecondary }]}>React</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -611,7 +615,7 @@ export default function PostCard({
           ))}
           
           {/* Total Reactions Indicator */}
-          <View style={styles.totalReactionsIndicator}>
+          <View style={[styles.totalReactionsIndicator, { backgroundColor: theme.colors.info }]}>
             <Text style={styles.totalReactionsText}>
               {formatNumber(Object.values(postReactions).reduce((sum, count) => sum + count, 0))}
             </Text>
@@ -739,14 +743,14 @@ export default function PostCard({
           {post.hashtags.map((hashtag, index) => (
             <TouchableOpacity 
               key={`${post.id}-hashtag-${index}`} 
-              style={styles.hashtag}
+              style={[styles.hashtag, { backgroundColor: theme.colors.inputBackground, borderColor: theme.colors.border }]}
               onPress={(e) => {
                 e.stopPropagation();
                 handleHashtagPress(hashtag);
               }}
               activeOpacity={0.7}
             >
-              <Text style={styles.hashtagText}>{hashtag}</Text>
+              <Text style={[styles.hashtagText, { color: theme.colors.primary }]}>{hashtag}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -756,18 +760,18 @@ export default function PostCard({
       <View style={styles.verificationContainer}>
         <View style={styles.verificationRow}>
           <View style={styles.verificationIcons}>
-            <MaterialIcons name="verified-user" size={14} color="#3B82F6" />
-            <MaterialIcons name="verified-user" size={14} color="#3B82F6" />
-            <MaterialIcons name="verified" size={14} color="#3B82F6" />
+            <MaterialIcons name="verified-user" size={14} color={theme.colors.primary} />
+            <MaterialIcons name="verified-user" size={14} color={theme.colors.primary} />
+            <MaterialIcons name="verified" size={14} color={theme.colors.primary} />
           </View>
-          <Text style={styles.verificationText}>Liked by verified users</Text>
+          <Text style={[styles.verificationText, { color: theme.colors.textSecondary }]}>Liked by verified users</Text>
         </View>
         <View style={styles.verificationRow}>
           <View style={styles.verificationIcons}>
-            <MaterialIcons name="verified" size={14} color="#3B82F6" />
-            <MaterialIcons name="verified-user" size={14} color="#3B82F6" />
+            <MaterialIcons name="verified" size={14} color={theme.colors.primary} />
+            <MaterialIcons name="verified-user" size={14} color={theme.colors.primary} />
           </View>
-          <Text style={styles.verificationText}>Commented by verified users</Text>
+          <Text style={[styles.verificationText, { color: theme.colors.textSecondary }]}>Commented by verified users</Text>
         </View>
       </View>
 
@@ -827,8 +831,8 @@ export default function PostCard({
               )}
             </View>
             <View style={styles.interactionInfo}>
-              <MaterialIcons name="chat-bubble-outline" size={14} color="#3B82F6" />
-              <Text style={styles.interactionText}>
+              <MaterialIcons name="chat-bubble-outline" size={14} color={theme.colors.primary} />
+              <Text style={[styles.interactionText, { color: theme.colors.textSecondary }]}>
                 {post.comments === 1 ? '1 comment' : `${formatNumber(post.comments)} comments`}
               </Text>
             </View>
@@ -953,11 +957,9 @@ export default function PostCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'white',
     marginBottom: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -1241,12 +1243,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   hashtag: {
-    backgroundColor: '#EBF8FF',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
   },
   hashtagText: {
     color: '#3B82F6',
