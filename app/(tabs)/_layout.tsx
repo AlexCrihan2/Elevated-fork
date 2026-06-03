@@ -14,17 +14,17 @@ interface TabIconProps {
   tabIndex: number;
 }
 
-// Color palette for each tab dot — blue-to-black modern gradient spectrum
+// Color palette for each tab dot — Warm spectrum (Reds, Oranges, Yellows, Browns)
 const TAB_COLORS = [
-  ['#3B82F6', '#2563EB'],   // Home - blue
-  ['#06B6D4', '#0891B2'],   // Tags - cyan
-  ['#6366F1', '#4F46E5'],   // News - indigo
-  ['#8B5CF6', '#7C3AED'],   // Trending - violet
-  ['#A855F7', '#9333EA'],   // Market - purple
-  ['#1E40AF', '#1E3A8A'],   // Chat - deep blue
-  ['#374151', '#1F2937'],   // Branding - slate
-  ['#111827', '#030712'],   // Weather - near black
-  ['#0EA5E9', '#0284C7'],   // Profile - sky blue
+  ['#D35400', '#A04000'],   // Home - burnt orange
+  ['#E67E22', '#BA4A00'],   // Tags - orange
+  ['#F39C12', '#CA6F1E'],   // News - amber
+  ['#F1C40F', '#D4AC0D'],   // Trending - yellow
+  ['#E74C3C', '#C0392B'],   // Market - soft red
+  ['#8D6E63', '#6D4C41'],   // Chat - warm brown
+  ['#A1887F', '#795548'],   // Branding - light brown
+  ['#5D4037', '#3E2723'],   // Weather - dark brown
+  ['#E67E22', '#D35400'],   // Profile - orange-red
 ];
 
 const TabIcon = ({ name, focused, color, size = 24, tabIndex }: TabIconProps) => {
