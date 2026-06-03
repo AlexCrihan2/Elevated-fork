@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, FlatList, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
 import ModernAnimatedUI from '@/components/ui/ModernAnimatedUI';
+import { useEconomy } from '@/contexts/EconomyContext';
+import TranslationWidget from '@/components/ui/TranslationWidget';
 
 const { width } = Dimensions.get('window');
 
@@ -65,6 +67,13 @@ const startupMetrics = [
   { metric: 'Partnerships', value: '15', growth: '+67%', icon: '🤝' },
 ];
 
+const bookData = [
+  { id: 'b1', title: 'The Future of AI', author: 'Dr. Sarah Chen', price: 150, rating: 4.8, cover: '🤖', type: 'ebook' },
+  { id: 'b2', title: 'Sustainable Living', author: 'Mark Green', price: 120, rating: 4.6, cover: '🌱', type: 'ebook' },
+  { id: 'b3', title: 'Mindful Leadership', author: 'Emma Wilson', price: 200, rating: 4.9, cover: '🧠', type: 'ebook' },
+  { id: 'b4', title: 'Quantum Computing 101', author: 'Prof. Alex', price: 180, rating: 4.7, cover: '⚛️', type: 'ebook' },
+];
+
 const innovationAreas = [
   { area: 'Artificial Intelligence', projects: 4, investment: '$5.2M' },
   { area: 'Blockchain Technology', projects: 2, investment: '$2.8M' },
@@ -82,9 +91,11 @@ const researchMilestones = [
 export default function BrandingScreen() {
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
+  const { credits, spendCredits, addCredits } = useEconomy();
   const [selectedSection, setSelectedSection] = useState('modern');
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
+  const [purchasedBooks, setPurchasedBooks] = useState<string[]>([]);
 
   const showNotification = (message: string) => {
     setAlertMessage(message);
@@ -94,10 +105,87 @@ export default function BrandingScreen() {
 
   const navSections = [
     { key: 'modern', label: 'Modern UI', icon: 'auto-awesome' },
+    { key: 'store', label: 'Store', icon: 'shopping-bag' },
     { key: 'projects', label: 'Projects', icon: 'science' },
     { key: 'preorders', label: 'Pre-Orders', icon: 'shopping-cart' },
-    { key: 'funding', label: 'Funding', icon: 'monetization-on' },
   ];
+
+  const handleBuyBook = (book: any) => {
+    if (purchasedBooks.includes(book.id)) {
+      showNotification(`${book.title} is now an Audiobook! 🎧`);
+      return;
+    }
+
+    Alert.alert(
+      'Confirm Purchase',
+      `Buy "${book.title}" for ${book.price} credits?\n\nThis will also unlock the Audiobook version!`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Buy Now',
+          onPress: () => {
+            const success = spendCredits(book.price, `Purchased book: ${book.title}`);
+            if (success) {
+              setPurchasedBooks(prev => [...prev, book.id]);
+              showNotification(`Purchased! Recipe downloaded. ${book.title} is now an Audiobook 🎧`);
+            } else {
+              Alert.alert('Insufficient Credits', 'Please add more credits to your account.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const renderStore = () => (
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.gridContent}>
+      <View style={styles.storeHero}>
+        <LinearGradient colors={['#6366F1', '#8B5CF6']} style={styles.storeHeroGradient}>
+          <Text style={styles.storeHeroTitle}>Elevated Store</Text>
+          <Text style={styles.storeHeroSubtitle}>Unlock premium knowledge and resources</Text>
+          <View style={styles.creditsBadge}>
+            <Text style={styles.creditsBadgeText}>💰 {credits} Credits</Text>
+          </View>
+        </LinearGradient>
+      </View>
+
+      <Text style={[styles.sectionTitle, { color: theme.colors.text, marginHorizontal: 12, marginBottom: 12 }]}>Featured Books</Text>
+
+      {Array.from({ length: Math.ceil(bookData.length / 2) }, (_, i) => (
+        <View key={i} style={styles.gridRow}>
+          {bookData.slice(i * 2, i * 2 + 2).map((book) => (
+            <TouchableOpacity key={book.id} style={[styles.bookCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
+              <View style={styles.bookCoverArea}>
+                <Text style={styles.bookEmojiLarge}>{book.cover}</Text>
+                {purchasedBooks.includes(book.id) && (
+                  <View style={styles.audiobookBadge}>
+                    <MaterialIcons name="headphones" size={14} color="#FFF" />
+                    <Text style={styles.audiobookText}>AUDIOBOOK</Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.bookInfoArea}>
+                <Text style={[styles.bookTitleText, { color: theme.colors.text }]} numberOfLines={1}>{book.title}</Text>
+                <Text style={styles.bookAuthorText}>{book.author}</Text>
+                <View style={styles.bookRatingRow}>
+                  <MaterialIcons name="star" size={14} color="#F59E0B" />
+                  <Text style={styles.ratingValueText}>{book.rating}</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.buyBtn, purchasedBooks.includes(book.id) && styles.listenBtn]}
+                  onPress={() => handleBuyBook(book)}
+                >
+                  <Text style={styles.buyBtnText}>
+                    {purchasedBooks.includes(book.id) ? 'Listen Now 🎧' : `Buy ${book.price} cr`}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ))}
+    </ScrollView>
+  );
 
   const renderProjects = () => (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.gridContent}>
@@ -292,6 +380,7 @@ export default function BrandingScreen() {
             <ModernAnimatedUI />
           </ScrollView>
         )}
+        {selectedSection === 'store' && renderStore()}
         {selectedSection === 'projects' && renderProjects()}
         {selectedSection === 'preorders' && renderPreOrders()}
         {selectedSection === 'funding' && renderFunding()}
@@ -461,6 +550,28 @@ const styles = StyleSheet.create({
   milestoneQuarterSmall: { fontSize: 15, fontWeight: '700' },
   achievementRowSmall: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 6 },
   achievementTextSmall: { fontSize: 12, lineHeight: 16, flex: 1 },
+
+  // Store styles
+  storeHero: { marginHorizontal: 12, marginBottom: 20, borderRadius: 16, overflow: 'hidden' },
+  storeHeroGradient: { padding: 20, alignItems: 'center' },
+  storeHeroTitle: { color: '#FFF', fontSize: 24, fontWeight: '800', marginBottom: 4 },
+  storeHeroSubtitle: { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginBottom: 12 },
+  creditsBadge: { backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  creditsBadgeText: { color: '#FBBF24', fontWeight: '700', fontSize: 12 },
+
+  bookCard: { width: CARD_WIDTH, borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 4 },
+  bookCoverArea: { height: 120, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  bookEmojiLarge: { fontSize: 50 },
+  audiobookBadge: { position: 'absolute', top: 8, right: 8, backgroundColor: '#10B981', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  audiobookText: { color: '#FFF', fontSize: 8, fontWeight: '900' },
+  bookInfoArea: { padding: 12 },
+  bookTitleText: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
+  bookAuthorText: { fontSize: 11, color: '#6B7280', marginBottom: 6 },
+  bookRatingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 10 },
+  ratingValueText: { fontSize: 11, fontWeight: '600', color: '#4B5563' },
+  buyBtn: { backgroundColor: '#3B82F6', paddingVertical: 8, borderRadius: 10, alignItems: 'center' },
+  listenBtn: { backgroundColor: '#10B981' },
+  buyBtnText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
 
   // Alert
   alertContainer: { position: 'absolute', bottom: 90, left: 20, right: 20, zIndex: 1000 },

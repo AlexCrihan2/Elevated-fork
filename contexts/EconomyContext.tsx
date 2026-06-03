@@ -31,6 +31,7 @@ interface EconomyContextType {
   donations: DonationRecord[];
   profileType: ProfileTypeKey;
   profileTypeMonthlyFee: number;
+  subscribedChannels: string[];
   addCredits: (amount: number, description: string) => void;
   spendCredits: (amount: number, description: string) => boolean;
   depositUSD: (usdAmount: number) => void;
@@ -38,19 +39,26 @@ interface EconomyContextType {
   donate: (targetId: string, targetType: DonationRecord['targetType'], amount: number, emojiType: string) => boolean;
   getDonationsForTarget: (targetId: string) => DonationRecord[];
   changeProfileType: (newType: ProfileTypeKey) => boolean;
+  subscribeToChannel: (channelId: string, monthlyFee: number) => boolean;
+  isSubscribed: (channelId: string) => boolean;
   creditToUSD: (credits: number) => number;
   usdToCredits: (usd: number) => number;
 }
 
-export type ProfileTypeKey = 'normal' | 'artist' | 'researcher' | 'teacher' | 'business' | 'seller';
+export type ProfileTypeKey = 'normal' | 'artist' | 'researcher' | 'teacher' | 'business' | 'musician' | 'architect' | 'designer' | 'developer' | 'journalist' | 'student';
 
 export const PROFILE_TYPES: Record<ProfileTypeKey, { label: string; emoji: string; color: string; monthlyFee: number; perks: string[] }> = {
   normal: { label: 'Normal', emoji: '👤', color: '#6B7280', monthlyFee: 0, perks: ['Basic posting', 'Follow users', 'Comment & like'] },
-  artist: { label: 'Artist', emoji: '🎨', color: '#EC4899', monthlyFee: 50, perks: ['Portfolio showcase', 'Sell artwork', 'Artist badge', 'Commissions'] },
-  researcher: { label: 'Researcher', emoji: '🔬', color: '#8B5CF6', monthlyFee: 75, perks: ['Research papers', 'Citation tracking', 'Lab network', 'Publications'] },
-  teacher: { label: 'Teacher', emoji: '🎓', color: '#3B82F6', monthlyFee: 60, perks: ['Course creation', 'Student management', 'Teacher badge', 'Revenue share'] },
-  business: { label: 'Business', emoji: '💼', color: '#F59E0B', monthlyFee: 100, perks: ['Business page', 'Analytics', 'Ads', 'Priority support'] },
-  seller: { label: 'Seller', emoji: '🛒', color: '#10B981', monthlyFee: 80, perks: ['Product listings', 'Store page', 'Payment processing', 'Seller badge'] },
+  business: { label: 'Business', emoji: '💼', color: '#F59E0B', monthlyFee: 150, perks: ['Business Analytics', 'Ads manager', 'Verified badge', 'Priority support', 'Revenue withdrawal'] },
+  artist: { label: 'Artist', emoji: '🎨', color: '#EC4899', monthlyFee: 80, perks: ['Portfolio showcase', 'Direct commissions', 'Artist badge', 'High-res uploads'] },
+  architect: { label: 'Tech Architect', emoji: '🏗️', color: '#3B82F6', monthlyFee: 120, perks: ['System blueprints', 'Technical consulting', 'Expert badge', 'Premium assets'] },
+  musician: { label: 'Musician', emoji: '🎵', color: '#8B5CF6', monthlyFee: 90, perks: ['Audio tracks', 'Ticket sales', 'Musician badge', 'Fan subscriptions'] },
+  researcher: { label: 'Researcher', emoji: '🔬', color: '#10B981', monthlyFee: 100, perks: ['Research papers', 'Citation tracking', 'Lab network', 'Expert validation'] },
+  designer: { label: 'Designer', emoji: '🎨', color: '#06B6D4', monthlyFee: 85, perks: ['Asset store', 'Design reviews', 'Designer badge', 'Pro templates'] },
+  developer: { label: 'Developer', emoji: '💻', color: '#6366F1', monthlyFee: 110, perks: ['Code sharing', 'API access', 'Dev badge', 'Cloud hosting'] },
+  journalist: { label: 'Journalist', emoji: '📰', color: '#EF4444', monthlyFee: 95, perks: ['Press releases', 'Verified news badge', 'Newsletter tools', 'Tip jar'] },
+  student: { label: 'Student', emoji: '🎓', color: '#A855F7', monthlyFee: 20, perks: ['Learning resources', 'Study groups', 'Student discount', 'Basic portfolio'] },
+  teacher: { label: 'Teacher', emoji: '👨‍🏫', color: '#F97316', monthlyFee: 70, perks: ['Course creation', 'Student management', 'Teacher badge', 'Revenue share'] },
 };
 
 export const DONATION_EMOJIS: Record<string, { emoji: string; label: string; minAmount: number }> = {
@@ -80,6 +88,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
   const [totalEarned, setTotalEarned] = useState(2500);
   const [totalSpent, setTotalSpent] = useState(0);
   const [profileType, setProfileType] = useState<ProfileTypeKey>('researcher');
+  const [subscribedChannels, setSubscribedChannels] = useState<string[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([
     { id: 't1', type: 'earn', amount: 2500, description: 'Welcome bonus', timestamp: new Date(Date.now() - 86400000).toISOString(), emoji: '🎁' },
   ]);
@@ -171,14 +180,35 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     return true;
   }, [credits, addTransaction]);
 
+  const subscribeToChannel = useCallback((channelId: string, monthlyFee: number): boolean => {
+    if (credits < monthlyFee) {
+      Alert.alert('Insufficient Credits', `You need ${monthlyFee} credits for this monthly subscription.`);
+      return false;
+    }
+    setCredits(prev => prev - monthlyFee);
+    setTotalSpent(prev => prev + monthlyFee);
+    setSubscribedChannels(prev => [...prev, channelId]);
+    addTransaction({
+      type: 'spend',
+      amount: -monthlyFee,
+      description: `Monthly subscription to channel: ${channelId}`,
+      emoji: '📺'
+    });
+    return true;
+  }, [credits, addTransaction]);
+
+  const isSubscribed = useCallback((channelId: string) => {
+    return subscribedChannels.includes(channelId);
+  }, [subscribedChannels]);
+
   const creditToUSD = useCallback((c: number) => c / CREDITS_PER_USD, []);
   const usdToCredits = useCallback((usd: number) => Math.floor(usd * CREDITS_PER_USD), []);
 
   return (
     <EconomyContext.Provider value={{
       credits, totalEarned, totalSpent, transactions, donations, profileType, profileTypeMonthlyFee,
-      addCredits, spendCredits, depositUSD, withdrawCredits, donate, getDonationsForTarget,
-      changeProfileType, creditToUSD, usdToCredits,
+      subscribedChannels, addCredits, spendCredits, depositUSD, withdrawCredits, donate, getDonationsForTarget,
+      changeProfileType, subscribeToChannel, isSubscribed, creditToUSD, usdToCredits,
     }}>
       {children}
     </EconomyContext.Provider>

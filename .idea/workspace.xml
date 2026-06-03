@@ -28,6 +28,12 @@
   </component>
   <component name="ExecutionTargetManager" SELECTED_TARGET="device_and_snapshot_combo_box_target[LocalEmulator::path=C:\Users\ALEXANDRU\.android\avd\Medium_Phone.avd]" />
   <component name="Git.Settings">
+    <option name="PUSH_TAGS">
+      <GitPushTagMode>
+        <option name="argument" value="--tags" />
+        <option name="title" value="All" />
+      </GitPushTagMode>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
@@ -46,6 +52,9 @@
   &quot;associatedIndex&quot;: 5
 }</component>
   <component name="ProjectId" id="3CeBVSyLDtb6NpFqJrsr3RHcxGS" />
+  <component name="ProjectLevelVcsManager">
+    <OptionsSetting value="false" id="Update" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -69,7 +78,7 @@
     "project.structure.last.edited": "Project",
     "project.structure.proportion": "0.0",
     "project.structure.side.proportion": "0.0",
-    "settings.editor.selected.configurable": "settings.sync"
+    "settings.editor.selected.configurable": "templates.modelproviders.configurable"
   },
   "keyToStringList": {
     "GitStage.ChangesTree.GroupingKeys": [
