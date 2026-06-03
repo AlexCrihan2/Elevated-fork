@@ -33,6 +33,7 @@ export default function ProfileScreen() {
   const {
     credits, totalEarned, totalSpent, transactions, profileType,
     changeProfileType, depositUSD, withdrawCredits, creditToUSD, profileTypeMonthlyFee,
+    subscribeToChannel, isSubscribed, subscribedChannels,
   } = useEconomy();
 
   const [activeTab, setActiveTab] = useState('overview');
@@ -101,12 +102,38 @@ export default function ProfileScreen() {
   };
 
   const handleWithdraw = () => {
-    Alert.alert('Withdraw Credits', `How many credits to withdraw? (Min 100)`, [
+    if (profileType !== 'business') {
+      Alert.alert('Access Restricted', 'Only Business profiles can withdraw cash. Upgrade your profile to enable this feature!');
+      return;
+    }
+
+    Alert.alert('Withdraw to Stripe', `How much would you like to withdraw? (Current balance: ${credits} cr)`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: '100 Credits ($1)', onPress: () => withdrawCredits(100) },
-      { text: '500 Credits ($5)', onPress: () => withdrawCredits(500) },
-      { text: '1000 Credits ($10)', onPress: () => withdrawCredits(1000) },
+      { text: 'Withdraw $10 (1000 cr)', onPress: () => withdrawCredits(1000) },
+      { text: 'Withdraw $50 (5000 cr)', onPress: () => withdrawCredits(5000) },
     ]);
+  };
+
+  const handleChannelSubscribe = (channelId: string, fee: number) => {
+    if (isSubscribed(channelId)) {
+      Alert.alert('Already Subscribed', `You are already a premium member of ${channelId}.`);
+      return;
+    }
+
+    Alert.alert(
+      'Channel Subscription',
+      `Subscribe to ${channelId} for ${fee} credits/month to get special benefits?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Subscribe Now',
+          onPress: () => {
+            const ok = subscribeToChannel(channelId, fee);
+            if (ok) showNotification(`Subscribed to ${channelId}! 📺`);
+          }
+        }
+      ]
+    );
   };
 
   const [settings, setSettings] = useState({ privateAccount: false, pushNotifications: true });
@@ -196,6 +223,39 @@ export default function ProfileScreen() {
       case 'overview':
         return (
           <View style={styles.tabContent}>
+            {/* Channel Subscriptions */}
+            <View style={[styles.subscriptionSection, { backgroundColor: isDark ? '#1E293B' : '#FFF' }]}>
+              <Text style={[styles.sectionHeader, { color: theme.colors.text, marginTop: 0 }]}>📺 Channel Subscriptions</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.channelScroll}>
+                {[
+                  { id: 'TechNova', fee: 100, color: '#3B82F6', icon: 'bolt' },
+                  { id: 'ArtPulse', fee: 75, color: '#EC4899', icon: 'palette' },
+                  { id: 'NewsWire', fee: 50, color: '#EF4444', icon: 'public' },
+                ].map(channel => (
+                  <TouchableOpacity
+                    key={channel.id}
+                    style={[styles.channelCard, { borderColor: channel.color + '40' }]}
+                    onPress={() => handleChannelSubscribe(channel.id, channel.fee)}
+                  >
+                    <View style={[styles.channelIcon, { backgroundColor: channel.color }]}>
+                      <MaterialIcons name={channel.icon as any} size={24} color="#FFF" />
+                    </View>
+                    <Text style={[styles.channelName, { color: theme.colors.text }]}>{channel.id}</Text>
+                    <Text style={styles.channelFee}>{channel.fee} cr/mo</Text>
+                    {isSubscribed(channel.id) ? (
+                      <View style={styles.subscribedBadge}>
+                        <Text style={styles.subscribedText}>Active</Text>
+                      </View>
+                    ) : (
+                      <View style={[styles.subscribeMiniBtn, { backgroundColor: channel.color }]}>
+                        <Text style={styles.subscribeMiniText}>Join</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
             {/* Credits Quickview */}
             <TouchableOpacity
               style={[styles.creditsQuickCard, { backgroundColor: isDark ? '#1E293B' : '#0F172A' }]}
@@ -731,6 +791,18 @@ const styles = StyleSheet.create({
   txDesc: { fontSize: 13, fontWeight: '600' },
   txTime: { fontSize: 10 },
   txAmount: { fontSize: 15, fontWeight: '800' },
+
+  // Channel styles
+  subscriptionSection: { borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  channelScroll: { gap: 12 },
+  channelCard: { width: 120, padding: 16, borderRadius: 16, borderWidth: 1, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.02)' },
+  channelIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  channelName: { fontSize: 13, fontWeight: '700', marginBottom: 2 },
+  channelFee: { fontSize: 11, color: '#6B7280', marginBottom: 8 },
+  subscribeMiniBtn: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
+  subscribeMiniText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
+  subscribedBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(16,185,129,0.1)' },
+  subscribedText: { color: '#10B981', fontSize: 10, fontWeight: '800' },
 
   // Overview cards
   creditsQuickCard: { borderRadius: 16, overflow: 'hidden', marginBottom: 12 },

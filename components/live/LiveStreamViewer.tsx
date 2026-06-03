@@ -48,6 +48,14 @@ interface FloatingEmoji {
   amount: number;
 }
 
+interface LiveComment {
+  id: string;
+  user: string;
+  message: string;
+  avatar: string;
+  y: number;
+}
+
 interface ChatMessage {
   id: string;
   user: string;
@@ -69,6 +77,7 @@ interface StreamDonor {
 }
 
 const { width, height } = Dimensions.get('window');
+const SCREEN_HEIGHT = height;
 
 const QUICK_DONATE_AMOUNTS = [5, 10, 20, 50, 100];
 
@@ -228,6 +237,32 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
+// ─── Live Comment Bubble ──────────────────────────────────────────────────────
+function LiveCommentBubble({ item }: { item: LiveComment }) {
+  const x = useSharedValue(width + 50);
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    opacity.value = withTiming(1, { duration: 500 });
+    x.value = withTiming(-width - 200, { duration: 6000, easing: Easing.linear });
+  }, []);
+
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateX: x.value }],
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View style={[styles.liveCommentBubble, style, { top: item.y }]}>
+      <View style={styles.liveCommentAvatar}><Text style={styles.lcAvatarText}>{item.avatar}</Text></View>
+      <View style={styles.liveCommentContent}>
+        <Text style={styles.liveCommentUser}>{item.user}</Text>
+        <Text style={styles.liveCommentText} numberOfLines={1}>{item.message}</Text>
+      </View>
+    </Animated.View>
+  );
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function LiveStreamViewer({ visible, onClose, streamData }: LiveStreamViewerProps) {
   const insets = useSafeAreaInsets();
@@ -256,6 +291,7 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
 
   // Floating emojis
   const [floatingEmojis, setFloatingEmojis] = useState<FloatingEmoji[]>([]);
+  const [liveComments, setLiveComments] = useState<LiveComment[]>([]);
 
   // ── Toast queue management ──
   const [activeDonationToast, setActiveDonationToast] = useState<DonationToast | null>(null);
@@ -365,6 +401,15 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
     setFloatingEmojis(prev => prev.filter(e => e.id !== id));
   }, []);
 
+  const spawnLiveComment = useCallback((user: string, message: string, avatar: string) => {
+    const id = `lc_${Date.now()}_${Math.random()}`;
+    const yPos = Math.random() * (SCREEN_HEIGHT * 0.4) + SCREEN_HEIGHT * 0.2;
+    setLiveComments(prev => [...prev, { id, user, message, avatar, y: yPos }]);
+    setTimeout(() => {
+      setLiveComments(prev => prev.filter(c => c.id !== id));
+    }, 4000);
+  }, []);
+
   const handleDonate = () => {
     const finalAmount = customAmount ? parseInt(customAmount) || 0 : selectedAmount;
     const emojiData = DONATION_EMOJIS[selectedEmojiKey];
@@ -411,9 +456,11 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
 
   const handleSendChat = () => {
     if (!chatInput.trim()) return;
+    const msg = chatInput.trim();
     setChatMessages(prev => [...prev.slice(-20), {
-      id: `msg_${Date.now()}`, user: 'You', message: chatInput.trim(), time: 'now', verified: false,
+      id: `msg_${Date.now()}`, user: 'You', message: msg, time: 'now', verified: false,
     }]);
+    spawnLiveComment('You', msg, '😊');
     setChatInput('');
     setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100);
   };
@@ -508,22 +555,16 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
       <StatusBar hidden />
       <View style={styles.container}>
 
-        {/* ── Video Area ── */}
-        <View style={styles.videoArea}>
+        {/* ── Video Area (FULL SCREEN) ── */}
+        <View style={styles.fullVideoArea}>
           <LinearGradient colors={[streamColor + 'CC', '#0F172A']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
 
-          {/* Presentation card */}
-          <View style={styles.presentationCard}>
+          {/* Presentation card (Subtle in full screen) */}
+          <View style={styles.miniPresentationCard}>
             <Text style={styles.presentationEmoji}>{streamData.emoji || '🎬'}</Text>
-            <Text style={styles.presentationTitle}>{streamData.title}</Text>
-            <Text style={styles.presentationHost}>{streamData.host || 'Live Host'}</Text>
-            <View style={styles.presentationMetrics}>
-              {[['47%', 'Growth'], ['15.2K', 'Users'], ['$2.4M', 'Revenue']].map(([v, l]) => (
-                <View key={l} style={styles.presentationMetric}>
-                  <Text style={styles.presentationMetricValue}>{v}</Text>
-                  <Text style={styles.presentationMetricLabel}>{l}</Text>
-                </View>
-              ))}
+            <View>
+              <Text style={styles.presentationTitle}>{streamData.title}</Text>
+              <Text style={styles.presentationHost}>{streamData.host || 'Live Host'}</Text>
             </View>
           </View>
 
@@ -541,10 +582,15 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
             <FloatingEmojiBubble key={item.id} item={item} onDone={removeFloatingEmoji} />
           ))}
 
+          {/* Live Comment Bubbles */}
+          {liveComments.map(item => (
+            <LiveCommentBubble key={item.id} item={item} />
+          ))}
+
           {/* Header */}
           <View style={[styles.videoHeader, { paddingTop: insets.top + 4 }]}>
             <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-              <MaterialIcons name="keyboard-arrow-down" size={28} color="#FFF" />
+              <MaterialIcons name="close" size={28} color="#FFF" />
             </TouchableOpacity>
             <View style={styles.videoHeaderCenter}>
               <View style={styles.livePill}>
@@ -555,10 +601,23 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
                 <MaterialIcons name="visibility" size={12} color="#E2E8F0" /> {viewerCount.toLocaleString()}
               </Text>
             </View>
-            <TouchableOpacity style={styles.leaderboardHeaderBtn} onPress={() => setActivePanel(activePanel === 'leaderboard' ? 'chat' : 'leaderboard')}>
-              <MaterialIcons name="leaderboard" size={20} color="#FFF" />
-              <Text style={styles.leaderboardHeaderBtnText}>{donors.length}</Text>
-            </TouchableOpacity>
+          </View>
+
+          {/* Overlaid Chat (Bottom Left) */}
+          <View style={[styles.overlayChat, { bottom: insets.bottom + 80 }]}>
+            <ScrollView
+              ref={chatScrollRef}
+              style={styles.overlayChatScroll}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.overlayChatContent}
+            >
+              {chatMessages.map(msg => (
+                <View key={msg.id} style={styles.overlayChatMsg}>
+                  <Text style={styles.overlayChatUser}>{msg.user}: </Text>
+                  <Text style={styles.overlayChatText}>{msg.message}</Text>
+                </View>
+              ))}
+            </ScrollView>
           </View>
 
           {/* Subtitles */}
@@ -579,68 +638,88 @@ export default function LiveStreamViewer({ visible, onClose, streamData }: LiveS
             <TouchableOpacity style={styles.vcBtn} onPress={() => setShowLanguageSelector(true)}>
               <Text style={styles.vcBtnFlag}>{currentLanguage.flag}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.vcBtn}><MaterialIcons name="volume-up" size={18} color="#FFF" /></TouchableOpacity>
-            <TouchableOpacity style={styles.vcBtn}><MaterialIcons name="fullscreen" size={18} color="#FFF" /></TouchableOpacity>
+            <TouchableOpacity style={styles.vcBtn} onPress={() => setActivePanel(activePanel === 'donate' ? 'chat' : 'donate')}>
+              <MaterialIcons name="favorite" size={18} color="#EF4444" />
+            </TouchableOpacity>
           </View>
 
-          {/* Total donations overlay */}
-          <TouchableOpacity style={styles.totalDonationOverlay} onPress={() => setActivePanel('leaderboard')}>
-            <MaterialIcons name="favorite" size={14} color="#EF4444" />
-            <Text style={styles.totalDonationText}>{totalDonated.toLocaleString()} cr</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Bottom Panel ── */}
-        <View style={[styles.bottomPanel, { paddingBottom: insets.bottom + 8 }]}>
-          <View style={styles.panelTabs}>
-            {(['chat', 'leaderboard', 'donate'] as const).map(tab => (
-              <TouchableOpacity key={tab} style={[styles.panelTab, activePanel === tab && styles.panelTabActive]} onPress={() => setActivePanel(tab)}>
-                <MaterialIcons name={tab === 'chat' ? 'chat-bubble-outline' : tab === 'leaderboard' ? 'leaderboard' : 'favorite'} size={16} color={activePanel === tab ? '#667eea' : '#9CA3AF'} />
-                <Text style={[styles.panelTabText, activePanel === tab && styles.panelTabTextActive]}>
-                  {tab === 'chat' ? 'Chat' : tab === 'leaderboard' ? 'Top Donors' : 'Donate'}
-                </Text>
-                {tab === 'leaderboard' && (
-                  <View style={styles.donorCountBadge}><Text style={styles.donorCountBadgeText}>{donors.length}</Text></View>
-                )}
-              </TouchableOpacity>
-            ))}
+          {/* Interaction Bar */}
+          <View style={[styles.interactionBar, { paddingBottom: insets.bottom + 10 }]}>
+            <TextInput
+              style={styles.overlayInput}
+              placeholder="Live comment..."
+              placeholderTextColor="rgba(255,255,255,0.6)"
+              value={chatInput}
+              onChangeText={setChatInput}
+              onSubmitEditing={handleSendChat}
+            />
+            <TouchableOpacity style={styles.actionIconBtn} onPress={() => setActivePanel('donate')}>
+              <MaterialIcons name="card-giftcard" size={24} color="#FFF" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionIconBtn} onPress={handleSendChat}>
+              <MaterialIcons name="send" size={24} color="#3B82F6" />
+            </TouchableOpacity>
           </View>
 
-          {activePanel === 'chat' && (
-            <KeyboardAvoidingView style={styles.chatPanel} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-              <ScrollView ref={chatScrollRef} style={styles.chatScroll} showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.chatScrollContent}
-                onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: true })}>
-                {chatMessages.map(msg => renderChatMessage({ item: msg }))}
-              </ScrollView>
-              <TouchableOpacity style={styles.quickDonateFloating} onPress={() => setActivePanel('donate')}>
-                <LinearGradient colors={['#EF4444', '#DC2626']} style={styles.quickDonateGradient}>
-                  <MaterialIcons name="favorite" size={16} color="#FFF" />
-                  <Text style={styles.quickDonateText}>Tip</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-              <View style={styles.chatInputRow}>
-                <TextInput style={styles.chatInput} placeholder="Say something..." placeholderTextColor="#6B7280"
-                  value={chatInput} onChangeText={setChatInput} onSubmitEditing={handleSendChat} returnKeyType="send" />
-                <TouchableOpacity style={styles.chatSendBtn} onPress={handleSendChat}>
-                  <MaterialIcons name="send" size={18} color="#FFF" />
-                </TouchableOpacity>
-              </View>
-            </KeyboardAvoidingView>
-          )}
-
-          {activePanel === 'leaderboard' && (
-            <ScrollView style={styles.leaderboardScroll} showsVerticalScrollIndicator={false}>
-              {renderLeaderboard()}
-            </ScrollView>
-          )}
-
+          {/* Donate Panel Overlay */}
           {activePanel === 'donate' && (
-            <ScrollView style={styles.donatePanelScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <Animated.View entering={FadeIn} exiting={FadeOut} style={styles.donateOverlayPanel}>
+              <TouchableOpacity style={styles.closePanelBtn} onPress={() => setActivePanel('chat')}>
+                <MaterialIcons name="keyboard-arrow-down" size={24} color="#FFF" />
+              </TouchableOpacity>
               {renderDonatePanel()}
-            </ScrollView>
+            </Animated.View>
           )}
         </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#000' },
+  fullVideoArea: { flex: 1, position: 'relative' },
+
+  miniPresentationCard: {
+    position: 'absolute', top: 100, left: 16, flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: 'rgba(0,0,0,0.4)', padding: 12, borderRadius: 12, zIndex: 5,
+  },
+  presentationEmoji: { fontSize: 24 },
+  presentationTitle: { color: '#FFF', fontWeight: '700', fontSize: 14 },
+  presentationHost: { color: 'rgba(255,255,255,0.7)', fontSize: 11 },
+
+  liveCommentBubble: {
+    position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, zIndex: 100,
+  },
+  liveCommentAvatar: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
+  lcAvatarText: { fontSize: 14 },
+  liveCommentContent: {},
+  liveCommentUser: { color: '#FFF', fontSize: 10, fontWeight: '700' },
+  liveCommentText: { color: '#FFF', fontSize: 12 },
+
+  overlayChat: { position: 'absolute', left: 16, width: width * 0.7, maxHeight: 200, zIndex: 10 },
+  overlayChatScroll: { flex: 1 },
+  overlayChatContent: { gap: 4 },
+  overlayChatMsg: { flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  overlayChatUser: { color: '#9CA3AF', fontWeight: '700', fontSize: 12 },
+  overlayChatText: { color: '#FFF', fontSize: 12 },
+
+  interactionBar: {
+    position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 12, backgroundColor: 'rgba(0,0,0,0.5)', gap: 12, zIndex: 20,
+  },
+  overlayInput: {
+    flex: 1, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 24, paddingHorizontal: 16, paddingVertical: 10,
+    color: '#FFF', fontSize: 14,
+  },
+  actionIconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+
+  donateOverlayPanel: {
+    position: 'absolute', bottom: 0, left: 0, right: 0, height: height * 0.6,
+    backgroundColor: '#1E293B', borderTopLeftRadius: 24, borderTopRightRadius: 24, zIndex: 30, padding: 20,
+  },
+  closePanelBtn: { alignSelf: 'center', marginBottom: 10 },
 
         {/* Language selector */}
         <Modal visible={showLanguageSelector} transparent animationType="fade">

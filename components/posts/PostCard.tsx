@@ -5,6 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Post } from '@/types/social';
 import { useSocial } from '@/hooks/useSocial';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useEconomy } from '@/contexts/EconomyContext';
 
 interface PostCardProps {
   post: Post;
@@ -28,6 +29,7 @@ export default function PostCard({
   onPress
 }: PostCardProps) {
   const { theme } = useTheme();
+  const { credits, donate } = useEconomy();
   const { updatePost } = useSocial();
   const [isTranslated, setIsTranslated] = useState(false);
   const [originalContent, setOriginalContent] = useState(post.content);
@@ -231,6 +233,7 @@ export default function PostCard({
   };
 
   const [userVotedPoll, setUserVotedPoll] = useState<string | null>(null);
+  const [tips, setTips] = useState<{ user: string; avatar: string }[]>([]);
 
   const handlePollVote = (optionIndex: number) => {
     if (!post.poll || userVotedPoll) {
@@ -327,6 +330,26 @@ export default function PostCard({
 
   const handlePostPress = () => {
     onPress?.(post);
+  };
+
+  const handleTip = () => {
+    Alert.alert(
+      'Support Creator',
+      'Tip 10 coins to this post?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Tip 10 💰',
+          onPress: () => {
+            const success = donate(post.id, 'post', 10, 'heart');
+            if (success) {
+              setTips(prev => [...prev.slice(-4), { user: 'You', avatar: '😊' }]);
+              Alert.alert('Thank you!', 'Your tip was sent to the creator.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const formatNumber = (num: number) => {
@@ -475,9 +498,9 @@ export default function PostCard({
         )}
 
         {/* GIF Display */}
-        {post.mediaType === 'gif' && post.mediaUrl && (
+        {(post.mediaType === 'gif' || (post.mediaUrl && post.mediaUrl.endsWith('.gif'))) && post.mediaUrl && (
           <View style={styles.gifContainer}>
-            <Image source={{ uri: post.mediaUrl }} style={styles.gifImage} />
+            <Image source={{ uri: post.mediaUrl }} style={styles.gifImage} contentFit="contain" />
             <View style={styles.gifBadge}>
               <Text style={styles.gifBadgeText}>GIF</Text>
             </View>
@@ -777,6 +800,36 @@ export default function PostCard({
 
       {/* User Interaction Circles */}
       <View style={styles.interactionSection}>
+        {/* Tips / Contributors Section */}
+        {tips.length > 0 && (
+          <View style={styles.interactionGroup}>
+            <View style={styles.interactionCircles}>
+              {tips.map((tip, index) => (
+                <TouchableOpacity
+                  key={`tip-${index}`}
+                  style={[
+                    styles.userInteractionCircle,
+                    { zIndex: 10 - index, marginLeft: index > 0 ? -10 : 0, borderColor: '#FBBF24' }
+                  ]}
+                  onPress={() => Alert.alert('Profile', `Go to ${tip.user}'s profile`)}
+                >
+                  <Text style={styles.interactionAvatarText}>{tip.avatar}</Text>
+                </TouchableOpacity>
+              ))}
+              {tips.length >= 5 && (
+                <View style={[styles.userInteractionCircle, styles.moreUsersCircle, { marginLeft: -10 }]}>
+                  <Text style={styles.moreUsersText}>+...</Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.interactionInfo}>
+              <Text style={[styles.interactionText, { color: '#D97706', fontWeight: '700' }]}>
+                Supported by {tips.length} contributors
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Likes Section */}
         {post.likes > 0 && (
           <View style={styles.interactionGroup}>
@@ -920,7 +973,18 @@ export default function PostCard({
           <Text style={styles.actionText}>Comment</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity 
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            handleTip();
+          }}
+        >
+          <MaterialIcons name="monetization-on" size={20} color="#F59E0B" />
+          <Text style={[styles.actionText, { color: '#F59E0B' }]}>Tip</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={styles.actionButton}
           onPress={(e) => {
             e.stopPropagation();

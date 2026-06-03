@@ -20,7 +20,6 @@ const TAB_COLORS = [
   ['#E67E22', '#BA4A00'],   // Tags - orange
   ['#F39C12', '#CA6F1E'],   // News - amber
   ['#F1C40F', '#D4AC0D'],   // Trending - yellow
-  ['#E74C3C', '#C0392B'],   // Market - soft red
   ['#8D6E63', '#6D4C41'],   // Chat - warm brown
   ['#A1887F', '#795548'],   // Branding - light brown
   ['#5D4037', '#3E2723'],   // Weather - dark brown
@@ -137,20 +136,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="marketplace"
-        options={{
-          title: 'Market',
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="library-books" focused={focused} color={color} tabIndex={4} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="subs"
         options={{
           title: t('chat'),
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="chat-bubble-outline" focused={focused} color={color} tabIndex={5} />
+            <TabIcon name="chat-bubble-outline" focused={focused} color={color} tabIndex={4} />
           ),
         }}
       />
@@ -159,7 +149,7 @@ export default function TabLayout() {
         options={{
           title: 'Branding',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="palette" focused={focused} color={color} tabIndex={6} />
+            <TabIcon name="palette" focused={focused} color={color} tabIndex={5} />
           ),
         }}
       />
@@ -168,7 +158,7 @@ export default function TabLayout() {
         options={{
           title: 'Weather',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="wb-sunny" focused={focused} color={color} tabIndex={7} />
+            <TabIcon name="wb-sunny" focused={focused} color={color} tabIndex={6} />
           ),
         }}
       />
@@ -177,10 +167,11 @@ export default function TabLayout() {
         options={{
           title: t('profile'),
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="person" focused={focused} color={color} tabIndex={8} />
+            <TabIcon name="person" focused={focused} color={color} tabIndex={7} />
           ),
         }}
       />
+      <Tabs.Screen name="marketplace" options={{ href: null }} />
     </Tabs>
   );
 }

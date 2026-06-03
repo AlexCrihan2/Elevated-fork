@@ -244,13 +244,21 @@ export default function HomeScreen() {
   // Filter posts by selected category AND active filter
   const getFilteredPosts = () => {
     let filtered = selectedCategory === 'all' ? posts : posts.filter(p => p.category === selectedCategory);
+
+    // Applying global filters
     switch (activeFilter) {
-      case 'Friends': return filtered.filter(p => ['drsarah_mitchell'].includes(p.user.username));
-      case 'Following': return filtered.filter(p => p.user.verified);
-      case 'Popular': return [...filtered].sort((a, b) => (b.engagement.likes + b.engagement.comments) - (a.engagement.likes + a.engagement.comments));
-      case 'Recent': return [...filtered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      case 'AI Picks': return filtered.filter(p => p.analytics && p.analytics.aiScore >= 85);
-      default: return filtered;
+      case 'Friends':
+        return filtered.filter(p => ['drsarah_mitchell', 'alex_chen_ai'].includes(p.user.username));
+      case 'Following':
+        return filtered.filter(p => p.user.verified || p.user.followers! > 50000);
+      case 'Popular':
+        return [...filtered].sort((a, b) => (b.engagement.likes + b.engagement.comments) - (a.engagement.likes + a.engagement.comments));
+      case 'Recent':
+        return [...filtered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      case 'AI Picks':
+        return filtered.filter(p => (p.analytics?.aiScore || 0) >= 80);
+      default:
+        return filtered;
     }
   };
 

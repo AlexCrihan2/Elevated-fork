@@ -34,6 +34,7 @@ interface StoryCreatorProps {
   visible: boolean;
   onClose: () => void;
   onSubmit: (story: any) => void;
+  onCreateStory: (story: any) => void;
 }
 
 interface MediaFile {
@@ -71,6 +72,8 @@ export default function StoryCreator({ visible, onClose, onSubmit }: StoryCreato
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [stickers, setStickers] = useState<{ id: string; emoji: string; x: number; y: number }[]>([]);
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
 
   const panGesture = useRef();
   const containerHeight = useSharedValue(screenHeight * 0.9);
@@ -175,6 +178,20 @@ export default function StoryCreator({ visible, onClose, onSubmit }: StoryCreato
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
+  const addSticker = (emoji: string) => {
+    setStickers([...stickers, {
+      id: Date.now().toString(),
+      emoji,
+      x: Math.random() * (screenWidth - 100) + 50,
+      y: Math.random() * 150 + 100
+    }]);
+    setShowStickerPicker(false);
+  };
+
+  const removeSticker = (id: string) => {
+    setStickers(stickers.filter(s => s.id !== id));
+  };
+
   const handleSubmit = () => {
     if (!content.trim() && mediaFiles.length === 0) {
       Alert.alert('Error', 'Please add content or media to your story');
@@ -197,13 +214,15 @@ export default function StoryCreator({ visible, onClose, onSubmit }: StoryCreato
       privacy,
       tags,
       mediaFiles,
+      stickers,
       category: selectedCategory,
       createdAt: new Date().toISOString(),
       id: Date.now().toString(),
     };
 
     onSubmit(storyData);
-    
+    if (typeof onCreateStory === 'function') onCreateStory(storyData);
+
     // Reset form
     setContent('');
     setSelectedBackground('#4F46E5');
@@ -385,6 +404,21 @@ export default function StoryCreator({ visible, onClose, onSubmit }: StoryCreato
 
           {/* Background Selection */}
           <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+            <View style={styles.sectionHeader}>
+              <MaterialIcons name="face" size={20} color={theme.colors.primary} />
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Add Stickers</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.addStickerBtn, { borderColor: theme.colors.primary }]}
+              onPress={() => setShowStickerPicker(true)}
+            >
+              <MaterialIcons name="add-reaction" size={24} color={theme.colors.primary} />
+              <Text style={[styles.addStickerText, { color: theme.colors.primary }]}>Choose Stickers</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Background Selection */}
+          <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Background Color</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {backgrounds.map((bg) => (
@@ -549,6 +583,20 @@ export default function StoryCreator({ visible, onClose, onSubmit }: StoryCreato
                 >
                   {content || 'Your story content will appear here...'}
                 </Text>
+
+                {/* Stickers on Canvas */}
+                {stickers.map(s => (
+                  <TouchableOpacity
+                    key={s.id}
+                    style={[styles.canvasSticker, { left: s.x, top: s.y }]}
+                    onPress={() => removeSticker(s.id)}
+                  >
+                    <Text style={styles.stickerEmoji}>{s.emoji}</Text>
+                    <View style={styles.removeStickerBadge}>
+                      <MaterialIcons name="close" size={10} color="white" />
+                    </View>
+                  </TouchableOpacity>
+                ))}
               </LinearGradient>
             </View>
           </View>
@@ -645,6 +693,23 @@ export default function StoryCreator({ visible, onClose, onSubmit }: StoryCreato
               </TouchableOpacity>
             ))}
           </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Sticker Picker Modal */}
+      <Modal visible={showStickerPicker} transparent animationType="fade">
+        <View style={styles.stickerPickerOverlay}>
+          <TouchableOpacity style={styles.pickerCloseBg} onPress={() => setShowStickerPicker(false)} />
+          <View style={[styles.stickerPickerModal, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.pickerTitle, { color: theme.colors.text }]}>Choose Stickers</Text>
+            <ScrollView contentContainerStyle={styles.stickerGrid}>
+              {['🔥', '✨', '🎉', '💡', '🚀', '💯', '❤️', '🙌', '💎', '🎨', '🤖', '🌍', '🎮', '🍕', '🏆', '⭐', '⚡', '🌈'].map(emoji => (
+                <TouchableOpacity key={emoji} style={styles.stickerItem} onPress={() => addSticker(emoji)}>
+                  <Text style={styles.stickerEmojiLarge}>{emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
         </View>
       </Modal>
     </Modal>
@@ -1021,5 +1086,67 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  addStickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    gap: 10,
+    marginTop: 10,
+  },
+  addStickerText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  canvasSticker: {
+    position: 'absolute',
+    padding: 8,
+  },
+  stickerEmoji: {
+    fontSize: 40,
+  },
+  removeStickerBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: 'rgba(239,68,68,0.8)',
+    borderRadius: 10,
+    padding: 2,
+  },
+  stickerPickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  pickerCloseBg: {
+    flex: 1,
+  },
+  stickerPickerModal: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: '50%',
+  },
+  pickerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  stickerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 15,
+  },
+  stickerItem: {
+    padding: 10,
+  },
+  stickerEmojiLarge: {
+    fontSize: 32,
   },
 });
