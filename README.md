@@ -51,11 +51,12 @@ npx eas-cli@latest build --platform all
 
 ## Main Dependencies
 
-- React Native: 0.79.3
+- React Native: 0.79.4
 - React: 19.0.0
-- Expo: ~53.0.9
-- Expo Router: ~5.0.7
+- Expo: ~53.0.12
+- Expo Router: ~5.1.0
 - Supabase: ^2.50.0
+- Kotlin (Android): 2.4.0 (managed via Gradle Version Catalog)
 - Other commonly used libraries:  
   - @expo/vector-icons  
   - react-native-paper  
