@@ -6,6 +6,7 @@ import { Post } from '@/types/social';
 import { useSocial } from '@/hooks/useSocial';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useEconomy } from '@/contexts/EconomyContext';
+import { router } from 'expo-router';
 
 interface PostCardProps {
   post: Post;
@@ -811,7 +812,7 @@ export default function PostCard({
                     styles.userInteractionCircle,
                     { zIndex: 10 - index, marginLeft: index > 0 ? -10 : 0, borderColor: '#FBBF24' }
                   ]}
-                  onPress={() => Alert.alert('Profile', `Go to ${tip.user}'s profile`)}
+                  onPress={() => router.push('/profile')}
                 >
                   <Text style={styles.interactionAvatarText}>{tip.avatar}</Text>
                 </TouchableOpacity>
